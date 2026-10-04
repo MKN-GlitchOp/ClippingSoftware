@@ -1,0 +1,27 @@
+# Environments & Dependencies
+.venv/
+node_modules/
+frontend/node_modules/
+
+# Local data & models
+projects/
+models/
+test_tmp/
+.tmp_pytest/
+
+# Tests & caches
+tests/live_project.txt
+tests/upload_project.txt
+tests/*.jpg
+tests/runtime-refine*/
+tests/artifacts/
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+.pytest_cache/
+
+# Build & logs
+frontend/dist/
+*.log
+*.tmp
+*.rendering.mp4

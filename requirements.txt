@@ -1,0 +1,8 @@
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+python-multipart>=0.0.20,<1
+yt-dlp[default]>=2026.3.17
+faster-whisper==1.2.1
+av==16.1.0
+pytest>=8,<10
+opencv-python-headless>=4.10

@@ -1,0 +1,16 @@
+@echo off
+setlocal
+cd /d "%~dp0"
+if not exist .venv\Scripts\python.exe (
+  echo Run setup.bat first.
+  pause
+  exit /b 1
+)
+if not exist frontend\dist\index.html (
+  call npm.cmd --prefix frontend run build
+  if errorlevel 1 exit /b 1
+)
+echo LocalCut will be available at http://127.0.0.1:8000
+echo Keep this window open. Press Ctrl+C to stop.
+.venv\Scripts\python.exe -m backend.launcher
+pause
