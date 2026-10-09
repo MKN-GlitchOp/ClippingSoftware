@@ -1,12 +1,15 @@
 import React, {useRef, useState} from 'react';
+import AudienceProfile from './AudienceProfile';
 import {
   YoutubeIcon, UploadIcon, PasteIcon, CloseIcon,
   CheckIcon, SlidersIcon, ChevronDownIcon
 } from './Icons';
 
 const defaults = {
+  content_profile: 'auto',
+  use_public_benchmarks: true,
   num_clips: 5,
-  min_length: 20,
+  min_length: 15,
   max_length: 60,
   ratio: '9:16',
   layout: 'crop',
@@ -232,6 +235,8 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
               ))}
             </div>
           </div>
+
+          <AudienceProfile value={settings.content_profile} onChange={value => set('content_profile', value)} disabled={busy} useBenchmarks={settings.use_public_benchmarks} onBenchmarksChange={value => set('use_public_benchmarks', value)} />
 
           {/* Duration Presets & Limits */}
           <div className="param-block">

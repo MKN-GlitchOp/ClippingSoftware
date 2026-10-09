@@ -1,0 +1,23 @@
+Ranking Shorts — editable Text+ Fusion Title
+
+INSTALL
+1. Double-click Ranking Shorts V2.drfx and accept Resolve's template installation.
+2. Reopen Resolve if needed. Find Ranking Shorts V2 in Effects > Titles > Clipping.
+3. Set your timeline to 1080 x 1920 before adding the title.
+
+USE
+Place your source footage on V1 and the title on V2.
+The transparent video window is full width, 608 pixels high, starting 535 pixels below the top. For a 1920 x 1080 source, use Scale entire image to fit; move the video up about 121 pixels from the frame centre (Transform Position Y about +121). The window centre is at pixel (540, 839).
+Split or duplicate the title at each clip boundary. Set Active rank to 5, 4, 3, 2, then 1. Change the five Rank label fields in the Inspector. Copy titles so their label text stays consistent.
+Show all five labels is enabled by default. Active rank changes the highlight without hiding other labels. To reveal the countdown progressively, turn Show all five labels off and leave Keep earlier labels visible on. Turn both off to show only the current label. Empty any label field you do not need.
+The heading has four editable text fragments, matching the white/yellow and white/cyan design. Keep the first white fragment's trailing space. If you change word lengths substantially, adjust the exposed heading positions to keep the two parts neatly aligned.
+Heading, label and number sizes are editable. Black panels can be turned off for a transparent text-only overlay. Labels share row centres with their numbers, and finish above the lower app controls.
+No captions, music, sound effects, fonts or footage are included. Uses standard Arial Bold and built-in Fusion nodes; no Studio-only effects.
+
+MANUAL INSTALL FALLBACK
+Copy Ranking Shorts V2.setting into:
+%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Templates\Edit\Titles\Clipping\
+Create the Clipping folder if needed, then restart Resolve.
+
+VALIDATION
+The package archive, all macro control targets, node connections and bracket structure have been checked against the format of Resolve's installed title templates. It has not been opened or rendered inside Resolve, so the first in-app render remains unverified.

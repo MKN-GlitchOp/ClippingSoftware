@@ -241,6 +241,18 @@ export default function Candidates({
                 </div>
               </button>
 
+              {clip.audience && <div className="audience-insights">
+                <div className="audience-chips"><span>{clip.audience.label}</span><span>{clip.audience.opening}</span><span>{clip.audience.payoff}</span></div>
+                <small>{clip.audience.evidence}</small>
+                {clip.audience.moment?.anchor != null && <p className="audience-help">Reaction cue at {time(clip.audience.moment.anchor)} · {clip.audience.moment.setup?'spoken setup included':'check earlier context'} · visual humor still needs review</p>}
+                {clip.audience.benchmarks?.examples?.length > 0 && <details className="benchmark-matches"><summary>Public examples behind this score · +{clip.audience.benchmarks.bonus}</summary>{clip.audience.benchmarks.examples.map(example=><p key={example.id}><a href={example.url} target="_blank" rel="noreferrer">{example.title} ↗</a><small>{example.views.toLocaleString()} views · Matched: {example.matched_terms.join(', ')} · Collected {new Date(example.collected_at).toLocaleDateString()}</small></p>)}<small>Topic similarity is supporting evidence, not a performance forecast.</small></details>}
+                <details><summary>Why this score? <span>{clip.score}/100 · editorial estimate</span></summary>
+                  <div className="score-breakdown-grid">{Object.entries(clip.score_breakdown || {}).filter(([,v]) => v !== 0).map(([name,value]) => <div key={name}><span>{name}</span><b className={value < 0 ? 'negative' : ''}>{value > 0 ? '+' : ''}{value}</b></div>)}</div>
+                  {clip.cautions?.map(caution => <p className="audience-caution" key={caution}>{caution}</p>)}
+                  {clip.edited && <p className="audience-help">Score reflects the original selection. Review your edited boundaries.</p>}
+                </details>
+              </div>}
+
               {clip.tags && clip.tags.length > 0 && (
                 <div className="tag-row">
                   {clip.tags.slice(0, 5).map(tag => (

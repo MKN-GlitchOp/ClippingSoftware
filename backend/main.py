@@ -43,6 +43,10 @@ async def lifespan(app):
     yield
 
 app = FastAPI(title='LocalCut', lifespan=lifespan)
+from backend.api.benchmarks import router as benchmarks_router
+app.include_router(benchmarks_router)
+from backend.api.trends import router as trends_router
+app.include_router(trends_router)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1','localhost','testserver'])
 worker = ThreadPoolExecutor(max_workers=1)
 jobs = set()
@@ -59,6 +63,8 @@ async def local_requests(request, call_next):
 
 
 class Settings(BaseModel):
+    use_public_benchmarks: bool = True
+    content_profile: Literal['auto','streamer','gaming','education','podcast','story'] = 'auto'
     num_clips: int = Field(default=5, ge=1, le=20)
     min_length: float = Field(default=20, ge=3, le=180)
     max_length: float = Field(default=60, ge=3, le=180)
@@ -235,6 +241,8 @@ def retry(pid: str):
 
 
 class AnalysisOptions(BaseModel):
+    use_public_benchmarks: bool = True
+    content_profile: Literal['auto','streamer','gaming','education','podcast','story'] = 'auto'
     num_clips: int = Field(default=5, ge=1, le=20)
     min_length: float = Field(default=20, ge=3, le=180)
     max_length: float = Field(default=60, ge=3, le=180)

@@ -37,7 +37,7 @@ const COLOR_PRESETS = [
   { id: 'white', label: 'White', hex: '#ffffff' }
 ];
 
-export default function ClipEditor({project, clip, busy, onSave, onRender, onDelete, onDirtyChange}) {
+export default function ClipEditor({project, clip, busy, onSave, onRender, onDelete, onDirtyChange, visible=true}) {
   const original = {
     start: clip.start,
     end: clip.end,
@@ -188,8 +188,9 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
 
   // Keyboard navigation for precision trimming
   useEffect(() => {
+    if (!visible) { video.current?.pause(); return; }
     const handleKeyDown = (e) => {
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'SUMMARY'].includes(e.target.tagName) || e.target.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -219,7 +220,7 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay, seek, playhead, draft.start, draft.end]);
+  }, [togglePlay, seek, playhead, draft.start, draft.end, visible]);
 
   const copyTranscript = () => {
     if (clip.transcript) {
@@ -241,7 +242,7 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
   };
 
   const save = () => {
-    onSave({
+    return onSave({
       ...draft,
       start: Number(draft.start),
       end: Number(draft.end),
@@ -249,9 +250,10 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
     });
   };
 
-  const handleRenderClick = () => {
+  const handleRenderClick = async () => {
     if (dirty && valid) {
-      save();
+      const saved = await save();
+      if (!saved) return;
     }
     onRender({
       ids: [clip.id],
@@ -306,7 +308,10 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
         </div>
       </div>
 
-      {/* Mode Toggle: Source Framing vs Exported MP4 */}
+      {/* Dual Studio Layout: Stage Zone (Left) & Inspector Zone (Right) */}
+      <div className="editor-layout-grid">
+        <div className="editor-stage-zone">
+          {/* Mode Toggle: Source Framing vs Exported MP4 */}
       <div className="monitor-switch">
         <button
           type="button"
@@ -331,7 +336,9 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
           className={`monitor-screen ${sourceMode && draft.layout === 'blur' ? 'blur-active' : ''}`}
           style={{
             aspectRatio: ratio.replace(':', ' / '),
-            width: ratio === '9:16' ? 'min(100%, 250px)' : ratio === '1:1' ? 'min(100%, 360px)' : '100%',
+            width: ratio === '9:16' ? 'min(100%, 380px)' : ratio === '1:1' ? 'min(100%, 480px)' : '100%',
+            maxHeight: 'min(58vh, 620px)',
+            margin: '0 auto',
             '--frame-image': `url("/api/projects/${project.id}/thumbnail/${clip.id}?at=${clip.start}")`
           }}
         >
@@ -537,6 +544,7 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
             title="Drag to adjust IN point (Start)"
             onPointerDown={(e) => { e.stopPropagation(); setDraggingHandle('in'); }}
           >
+            <span className="handle-tag">IN</span>
             <span className="timeline-handle-tooltip">IN: {time(draft.start, true)}</span>
           </div>
 
@@ -547,6 +555,7 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
             title="Drag to adjust OUT point (End)"
             onPointerDown={(e) => { e.stopPropagation(); setDraggingHandle('out'); }}
           >
+            <span className="handle-tag">OUT</span>
             <span className="timeline-handle-tooltip">OUT: {time(draft.end, true)}</span>
           </div>
 
@@ -561,7 +570,10 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
         </div>
       </div>
 
-      {/* Sub-console Navigation */}
+        </div>
+
+        <div className="editor-inspector-zone">
+          {/* Sub-console Navigation */}
       <div className="sub-console-tabs" role="tablist">
         <button
           type="button"
@@ -1157,6 +1169,8 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
           {clip.render_error}
         </div>
       )}
+        </div>
+      </div>
     </section>
   );
 }

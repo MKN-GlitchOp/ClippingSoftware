@@ -97,3 +97,90 @@ Future extensions: speaker/face tracking, punch-ins, jump cuts, caption template
 Heuristic scoring is tuned for English speech. Whisper can transcribe other languages, but the editorial score will be less informative. The center crop does not track speakers; captions use a lower safe-area position without face detection. Preview the output for each source. Timing edits update the exported transcript and invalidate old renders, but title/reason/score remain the original selection suggestions. Available clip count can be below your request when there are too few non-overlapping passages.
 
 `requirements.lock.txt` and `frontend/package-lock.json` capture the dependency versions actually installed and tested. `requirements.txt` describes the main dependencies and compatible version ranges. The current virtual environment was created with Codex's bundled Python; fresh installations should use the standalone Python installation above for independence from the desktop app's runtime.
+
+## Content-aware refinement (4 October 2026)
+
+New projects and **Refine Content, Duration & Ranking** now offer Auto, Gaming,
+Education, Podcast and Stories profiles. Clip cards show the chosen profile,
+opening/payoff checks, evidence source, scoring breakdown and review cautions.
+
+Fresh YouTube downloads retain public replay heatmaps when available. Above-average
+replay interest contributes up to 8 points; missing heatmaps need no special setup.
+Previously downloaded projects retain local-only analysis unless they already have
+saved replay metadata. The app does not collect account analytics or live trends.
+
+The weights are editorial heuristics informed by [YouTube's discovery guidance](https://support.google.com/youtube/answer/11914225)
+and [TikTok's recommendation guidance](https://support.tiktok.com/en/using-tiktok/exploring-videos/how-tiktok-recommends-content).
+They are not platform algorithms or predicted view counts. Public replay interest
+reflects the original video's audience and does not prove that a short will perform.
+Auto classification is keyword-based; choose a profile yourself when it guesses wrong.
+
+The interface uses installed system fonts and makes no Google Fonts requests.
+Existing face tracking, waveform, export resolutions and manual editing are retained.
+
+## Public Shorts database (5 October 2026)
+
+Open **Public Shorts database** in the sidebar. Search a topic or paste up to ten
+public YouTube video links. Collection reads metadata only: title, tags, channel,
+views, likes, comments, upload date, duration and dimensions. It downloads no videos
+and requires no API key, paid service or account. Results persist in
+`data/public_shorts.sqlite3` using Python's built-in SQLite; no dependency was added.
+
+Discovery uses YouTube's Shorts search filter through yt-dlp's search-URL extractor,
+checks up to 15 search results, and inspects up to 10 metadata records. Unknown,
+landscape, live, and over-180-second videos are excluded. It is a growing sample of
+public short-format videos, not a comprehensive/global list of the best Shorts.
+Some public counts can be unavailable; the interface preserves them as unknown.
+
+The library orders examples using log-scaled lifetime views per day plus capped
+likes per view. These are design heuristics, not YouTube ranking weights. Refresh
+oldest 20 records on demand. Daily snapshots permit observed view-growth estimates
+once at least 24 hours separates samples. Same-day refreshes do not invent growth.
+JSON export is available in the library; the SQLite file can also be backed up.
+
+During analysis, a local inverted index compares candidate transcript topics with
+public titles and tags. Matching requires at least two shared meaningful terms,
+at least one title match, category compatibility, 1,000 public views, and data
+collected within 30 days. Up to 6 points are added; multiple examples do not stack.
+Clip cards display supporting links, matched terms, view counts and collection
+dates. Disable **Use relevant examples from my public Shorts database** to ignore
+this signal. New projects use it by default; re-analysis applies it to existing
+projects only when requested, preserving already-exported files.
+
+Your source transcript is never used as an online search query. Only the topic or
+URLs you enter are sent to YouTube during collection. Cached ranking works offline.
+The database contains no private retention, watch-time, swipe-away or revenue data.
+Those require the channel owner's authorized analytics access: see
+[YouTube Analytics](https://developers.google.com/youtube/analytics/channel_reports).
+Public popularity and title similarity do not establish why a Short performed well.
+
+Implementation: `backend/services/benchmarks.py`, `backend/api/benchmarks.py`, and
+`frontend/src/components/BenchmarkLibrary.jsx`. Search/filter and format behavior
+were checked against the installed yt-dlp extractor and real public metadata.
+
+
+## Monthly trends page — 5 October 2026
+
+Open **Monthly trends** in the sidebar (http://127.0.0.1:8000/#trends).
+Choose an upload month, topic and format, then select **Scan this month**.
+Top 5 & rankings is the default. Topic cards summarize the median performance,
+number of examples and independent channels; the leaderboard can sort by public
+views, likes or lifetime average views/day. Titles link to the original Shorts.
+
+Discovery uses the existing yt-dlp installation and stores public metadata in
+`data/public_shorts.sqlite3`. It checks at most six results per topic across seven
+topics, validates real upload dates and vertical/square dimensions, and shares the
+reference library used by clip scoring. No videos or private transcripts are uploaded.
+Internet access is required for discovery; saved results remain local.
+
+This is a collected sample, not a comprehensive global trend chart. Month refers
+to upload date, not views earned in that month. Counts are cumulative at collection.
+Topic/format labels come from titles. Topics without a 1,000-view example show
+“Low reach so far”; this threshold is only a screening aid. The initial October
+scan found seven matching records with low reach, so no strong trend is claimed.
+Earlier months may have no matching results. Add known examples through the public
+reference library to expand the sample. Scanning never re-renders existing projects.
+
+Implementation: backend/services/trends.py, backend/api/trends.py,
+frontend/src/components/TrendsPage.jsx, sidebar routing/style updates, and
+hidden-editor keyboard/playback handling. No new dependencies.

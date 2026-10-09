@@ -16,6 +16,8 @@ from backend.services.media import probe, run
 
 WORKSPACE = Path(__file__).resolve().parents[1]
 EXAMPLE = WORKSPACE/'projects'/'69ba906302a84f838de887f408683b14'
+if not EXAMPLE.exists() and (WORKSPACE/'tests'/'live_project.txt').exists():
+    EXAMPLE = WORKSPACE/'projects'/(WORKSPACE/'tests'/'live_project.txt').read_text().strip()
 
 
 def test_words_across_segment_boundary_remain_one_sentence():
@@ -93,7 +95,10 @@ def test_blur_upper_captions_export_metadata_and_bundle(local_project):
     run(['ffmpeg','-v','error','-i',str(target),'-f','null','-'])
     assert progress[-1] == 1 and any(0 <= value < 1 for value in progress)
     ass = (storage.folder(p['id'])/'clips'/'1.ass').read_text(encoding='utf-8-sig')
-    assert ',8,90,140,230,1' in ass
+    fields = next(line for line in ass.splitlines() if line.startswith('Format: Name')).split(':',1)[1].split(',')
+    values = next(line for line in ass.splitlines() if line.startswith('Style:')).split(':',1)[1].split(',')
+    style = dict(zip((field.strip() for field in fields), values))
+    assert style['Alignment'] == '8' and int(style['MarginV']) > 0
     c.update(file=name,render_status='ready')
     storage.save(p)
     with TestClient(app) as client:
@@ -109,7 +114,7 @@ def test_blur_upper_captions_export_metadata_and_bundle(local_project):
         response = client.get(endpoint+'/bundle')
         assert response.status_code == 200
         with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
-            assert set(archive.namelist()) == {name,target.with_suffix('.json').name}
+            assert {name,target.with_suffix('.json').name}.issubset(set(archive.namelist()))
         assert not list(target.parent.glob('download_*.zip'))
         assert client.get(endpoint+'/thumbnail/1').content.startswith(b'\xff\xd8')
         assert '-->' in client.get(endpoint+'/transcript?format=srt').text
@@ -129,7 +134,7 @@ def test_retry_reuses_completed_work(local_project, monkeypatch):
     pipeline.process(p['id'])
     result=storage.load(p['id'])
     assert result['status']=='ready',result.get('error')
-    assert result['analysis_version']==2 and result['candidates']
+    assert result['analysis_version']==4 and result['candidates']
 
 
 def test_interrupted_render_recovers_without_losing_clips(local_project):

@@ -1,6 +1,9 @@
 import React, {useState, useEffect} from 'react';
 import useWorkspace from './hooks/useWorkspace';
 import NewProject from './components/NewProject';
+import AudienceProfile from './components/AudienceProfile';
+import BenchmarkLibrary from './components/BenchmarkLibrary';
+import TrendsPage from './components/TrendsPage';
 import Progress from './components/Progress';
 import Candidates from './components/Candidates';
 import ClipEditor, {editorKey} from './components/ClipEditor';
@@ -25,7 +28,7 @@ function SelectionSettings({project, disabled, onApply}) {
       >
         <div className="reanalyze-title-group">
           <SlidersIcon size={14} />
-          <span>Adjust Duration or Moment Count</span>
+          <span>Refine Content, Duration & Ranking</span>
         </div>
         <span className="reanalyze-arrow">{isOpen ? '▲' : '▼'}</span>
       </button>
@@ -38,10 +41,14 @@ function SelectionSettings({project, disabled, onApply}) {
             onApply({
               num_clips: +values.num_clips,
               min_length: +values.min_length,
-              max_length: +values.max_length
+              max_length: +values.max_length,
+              content_profile: values.content_profile || 'auto',
+              use_public_benchmarks: values.use_public_benchmarks ?? true
             });
           }}
         >
+          <AudienceProfile value={values.content_profile} disabled={disabled} onChange={content_profile => setValues({...values, content_profile})} useBenchmarks={values.use_public_benchmarks ?? true} onBenchmarksChange={use_public_benchmarks => setValues({...values,use_public_benchmarks})} />
+          <p className="audience-help">Reuses your transcript. Replaces the shortlist and clip edits; existing exported files stay on disk.</p>
           <div className="reanalyze-grid">
             <label className="param-input-col">
               <span>Target Clips</span>
@@ -113,6 +120,13 @@ export default function App() {
   const [titleDraft, setTitleDraft] = useState('');
   const [renderModalOpen, setRenderModalOpen] = useState(false);
   const [systemDirs, setSystemDirs] = useState(null);
+  const [benchmarksOpen, setBenchmarksOpen] = useState(false);
+  const [page, setPage] = useState(()=>location.hash==='#trends'?'trends':'studio');
+  useEffect(()=>{
+    const change=()=>setPage(location.hash==='#trends'?'trends':'studio');
+    window.addEventListener('hashchange',change);
+    return()=>window.removeEventListener('hashchange',change);
+  },[]);
 
   useEffect(() => {
     fetchSystemDirs().then(dirs => setSystemDirs(dirs)).catch(() => {});
@@ -130,6 +144,8 @@ export default function App() {
       return;
     }
     setActiveId(null);
+    location.hash='studio';
+    setPage('studio');
     openProject(id);
   };
 
@@ -183,6 +199,7 @@ export default function App() {
 
   return (
     <div className="studio-shell">
+      {benchmarksOpen && <BenchmarkLibrary onClose={()=>setBenchmarksOpen(false)} />}
       {/* SIDEBAR */}
       <aside className="studio-sidebar">
         {/* Brand */}
@@ -198,6 +215,10 @@ export default function App() {
         </div>
 
         {/* New Project CTA */}
+        <nav className="studio-page-nav" aria-label="Workspace pages">
+          <a href="#studio" aria-current={page==='studio'?'page':undefined}>◧ Clip studio</a>
+          <a href="#trends" aria-current={page==='trends'?'page':undefined}>↗ Streamer moments</a>
+        </nav>
         <button
           className="btn-new-cut"
           onClick={() => navigate(null)}
@@ -206,6 +227,7 @@ export default function App() {
         </button>
 
         {/* Project Library */}
+        <button className="btn-new-cut benchmark-open" onClick={()=>setBenchmarksOpen(true)}>Public Shorts database ↗</button>
         <div className="library-pane">
           <div className="library-bar">
             <span className="library-label">PROJECTS</span>
@@ -294,7 +316,8 @@ export default function App() {
       </aside>
 
       {/* WORKSPACE */}
-      <main className="studio-workspace">
+      {page==='trends'&&<TrendsPage onOpenLibrary={()=>setBenchmarksOpen(true)} />}
+      <main className="studio-workspace" style={{display:page==='trends'?'none':undefined}}>
         {/* Top Header */}
         <header className="workspace-topbar">
           <div className="topbar-left">
@@ -517,6 +540,7 @@ export default function App() {
                         clip={active}
                         busy={disabled}
                         onDirtyChange={setDirty}
+                        visible={page==='studio'}
                         onSave={values => mutate(`/clips/${active.id}`, values, 'Adjustments saved')}
                         onRender={options => mutate('/render', options || {ids: [active.id]})}
                         onDelete={handleDeleteClip}

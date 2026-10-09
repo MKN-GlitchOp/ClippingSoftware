@@ -3,9 +3,11 @@ import json
 import math
 import re
 from collections import Counter
+from .audience import choose_profile, refine_score
+from .streamer import refine_moment, event, REACTION, SETUP
 from urllib.request import Request, urlopen
 
-ANALYSIS_VERSION = 2
+ANALYSIS_VERSION = 5
 END = re.compile(r'[.!?]["\u201d\u2019]*$')
 CONTEXT = re.compile(r'^(?:and|but|so|however|they|he|she|it|that|these|those|as I said|like I said)\b', re.I)
 CONTEXT_STRICT = re.compile(r'^(?:as I said|like I said|and so|and that|but that)\b', re.I)
@@ -144,7 +146,7 @@ def suggested_title(units):
         words = words[:12]
         while words and words[-1].lower().strip(',.') in {'a','an','the','of','to','and','or','in','with','for','by','is'}:
             words.pop()
-        title = ' '.join(words).rstrip(',;:') + '…'
+        title = ' '.join(words).rstrip(',;:') + 'â€¦'
     if title:
         title = title[0].upper() + title[1:]
     return title[:160]
@@ -224,12 +226,12 @@ def score_passage(units, silence, previous_complete=True, audio_energy=None):
             elif clip_mean < global_mean * 0.40:
                 breakdown['Low audio energy'] = -8
 
-            if clip_max >= p90 and p90 > 0.1:
+            if clip_max >= p90 and p90 > 0.1 and clip_max > clip_mean * 1.5:
                 breakdown['Climactic reaction / punchline'] = 10
-                reasons.append('climactic reaction peak')
+                reasons.append('distinct audio peak to review')
 
             opening_samples = clip_energies[:min(6, len(clip_energies))]
-            if opening_samples and max(opening_samples) >= p75:
+            if opening_samples and max(opening_samples) >= p75 and max(opening_samples) > global_mean * 1.3:
                 breakdown['High-energy opening hook'] = 6
                 reasons.append('punchy high-energy opening')
 
@@ -290,15 +292,21 @@ def score_passage(units, silence, previous_complete=True, audio_energy=None):
 
 def analyze(transcript, settings, signals, duration):
     units = speech_units(transcript)
+    units = [u for u in units if u['text'].strip() and u['end'] > u['start']]
     minimum, maximum = settings['min_length'], settings['max_length']
     candidates, scenes = [], sorted(signals.get('scenes', []))
     silence = signals.get('silence', [])
     audio_energy = signals.get('audio_energy')
+    profile = choose_profile(' '.join(u['text'] for u in units), settings.get('content_profile', 'auto'))
+    streamer = profile == 'streamer'
 
     for i, first in enumerate(units):
         local = []
         for j in range(i, len(units)):
             last = units[j]
+            # Don't stitch unrelated scenes across long stretches without speech.
+            if j > i and last['start']-units[j-1]['end'] > 8:
+                break
             if j > i and topic_intro(last):
                 break
             length = last['end'] - first['start']
@@ -313,11 +321,45 @@ def analyze(transcript, settings, signals, duration):
             score, reason, breakdown, cautions = score_passage(
                 passage, silence, i == 0 or units[i-1]['complete'], audio_energy=audio_energy
             )
+            audience = refine_score(passage, breakdown, cautions, profile, signals.get('heatmap'))
+            if streamer:
+                # Slang alone ("bro", "chat") is not a hook or evidence of humor.
+                if breakdown.get('Opening hook') and not (REACTION.search(first['text']) or SETUP.search(first['text']) or HOOK_CURIOSITY.search(first['text'])):
+                    breakdown['Opening hook'] = 0
+                moment = refine_moment(units, i, j, breakdown, cautions)
+                audience['moment'] = moment
+                audience['payoff'] = moment['kind']
+                reason = ('Spoken setup followed by a reaction or punchline.' if moment['setup'] else
+                          'Reaction cue found; review its context.' if moment['anchor'] is not None else
+                          'Spoken passage for manual review; no clear comedy cue.')
+                # Repeated sentence punctuation is normal during banter.
+                breakdown.pop('Focus', None)
+                # Keep a short pause just before a supported reaction as timing.
+                timing = sum(min(1.8, max(0, min(last['end'],b)-max(first['start'],a)))
+                             for a,b in silence if 0 < b-a <= 2.5 and any(
+                                 event(u) and 0 <= u['start']-b <= .6 for u in passage))
+                if timing:
+                    breakdown['Comedic pause allowance'] = min(-breakdown.get('Dead air',0),round(timing/max(length,1)*65))
+            index = signals.get('benchmark_index') if settings.get('use_public_benchmarks', True) else None
+            if index is not None:
+                benchmark = index.match(text, profile)
+                if benchmark['bonus']:
+                    breakdown['Relevant public Shorts'] = benchmark['bonus']
+                    audience['benchmarks'] = benchmark
+                    audience['evidence'] += ' + public Shorts comparisons'
+            raw_score = sum(breakdown.values())
+            if streamer and raw_score > 75:
+                # Compress overlapping positive cues instead of tying every loud clip at 100.
+                breakdown['Overlapping evidence adjustment'] = -round((raw_score-75)*.65)
+            score = max(0, min(100, round(sum(breakdown.values()))))
             start, end = max(0, first['start']), min(duration, last['end'])
             previous_end = units[i-1]['end'] if i else 0
             next_start = units[j+1]['start'] if j+1 < len(units) else duration
-            if length + 0.2 <= maximum:
-                start, end = max(previous_end, start - 0.08), min(next_start, duration, end + 0.12)
+            lead, tail = (.2, .65 if event(last) else .25) if streamer else (.08,.12)
+            spare = max(0, maximum-length)
+            lead = min(lead,spare/2)
+            tail = min(tail,spare-lead)
+            start, end = max(previous_end, start-lead), min(next_start, duration, end+tail)
             for cut in scenes:
                 if previous_end <= cut <= start and start - cut <= 0.25 and end - cut <= maximum:
                     start = cut
@@ -328,7 +370,7 @@ def analyze(transcript, settings, signals, duration):
             local.append(dict(
                 start=round(start, 3), end=round(end, 3), duration=round(end - start, 3), score=score,
                 reason=reason, score_breakdown=breakdown, cautions=cautions, title=suggested_title(passage),
-                hook=first['text'], tags=keywords(text), transcript=text
+                hook=first['text'], tags=keywords(text), transcript=text, audience=audience
             ))
         candidates.extend(sorted(local, key=lambda c: (-c['score'], c['duration']))[:2])
 
@@ -339,32 +381,20 @@ def analyze(transcript, settings, signals, duration):
     sorted_candidates = sorted(candidates, key=lambda c: (-c['score'], c['duration']))
     selected = []
 
-    # If video is long enough (> 120s) and multiple clips requested,
-    # use temporal diversity to ensure we cover the whole video instead of clustering
-    if duration > 120 and num_target >= 3 and len(sorted_candidates) > num_target * 2:
-        best_overall = sorted_candidates[0]
-        selected.append(best_overall)
-
-        num_zones = min(num_target, 4)
-        zone_duration = duration / num_zones
-        for z in range(num_zones):
-            z_start = z * zone_duration
-            z_end = (z + 1) * zone_duration
-            for cand in sorted_candidates:
-                if cand['score'] < 52:
-                    break
-                if cand['start'] >= z_start and cand['start'] < z_end:
-                    if all(cand['end'] <= other['start'] or cand['start'] >= other['end'] for other in selected):
-                        selected.append(cand)
-                        break
-            if len(selected) >= num_target:
-                break
-
-    for candidate in sorted_candidates:
-        if len(selected) >= num_target:
+    # Greedy relevance + topic diversity. Never force a weak clip just to fill a time zone.
+    while sorted_candidates and len(selected) < num_target:
+        available = [c for c in sorted_candidates if all(
+            c['end'] <= other['start'] or c['start'] >= other['end'] for other in selected)]
+        if not available:
             break
-        if all(candidate['end'] <= other['start'] or candidate['start'] >= other['end'] for other in selected):
-            selected.append(candidate)
+        def utility(candidate):
+            terms = set(candidate['tags'])
+            overlap = max((len(terms & set(other['tags'])) / max(1, len(terms | set(other['tags'])))
+                           for other in selected), default=0)
+            return candidate['score'] - 10*overlap, -candidate['duration']
+        best = max(available, key=utility)
+        selected.append(best)
+        sorted_candidates.remove(best)
 
     # Sort so the highest-scoring moments are listed first
     selected.sort(key=lambda c: (-c['score'], c['start']))

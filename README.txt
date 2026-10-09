@@ -98,10 +98,29 @@ video rendering occur on your CPU/GPU using modern open-source foundations.
     - Modal provides global dimension selection (1080x1920 vs 1920x1080), subtitle
       burn-in toggles, SRT export options, face tracking, and folder targets.
 
-[+] OBSIDIAN / CARBON STUDIO WORKSTATION AESTHETIC
-    - Clean monospaced interface styled with Google's Source Code Pro font.
-    - Dark graphite/carbon palette with responsive layouts, accessible contrast,
-      and safety-confirmed deletions for projects and clips.
+[+] JETBRAINS MONO CODE FONT & COHESIVE ORANGE & BLACK STUDIO FLOW
+    - Official Google JetBrains Mono code font integrated across all headers, inputs,
+      readouts, and tabs for a crisp developer-studio aesthetic.
+    - Vibrant tally orange (#ff6200 / #ff781f) and deep carbon obsidian palette
+      flowing consistently through every button, badge, slider, tab, and card.
+    - Eliminated all conflicting teal/green colors and Segoe UI font overrides.
+
+[+] EXPANSIVE & OPTIMIZED CLIP EDITOR WORKSPACE
+    - Completely overhauled from a cramped single-column layout into a spacious dual-zone
+      studio layout:
+      * Stage Zone (Left): Generous video monitor screen (380px wide for 9:16 vertical,
+        780px for 16:9 widescreen), tactile In/Out transport bar, and a double-height 52px
+        waveform scrubber track with draggable [IN] and [OUT] handles.
+      * Inspector Zone (Right): Dedicated parameter tabs (Timing, Framing, Render, Hook)
+        displayed side-by-side on desktop so you can tweak cuts while watching playback.
+    - Pinned candidates list column with independent scroll (340px width) and glowing
+      orange active-selection indicator.
+
+[+] YOUTUBE 429 BOT-PROTECTION BYPASS
+    - Upgraded backend downloader with player_skip=['webpage', 'configs'] to bypass
+      desktop HTML scraping rate limits and 'Sign in to confirm you\'re not a bot' blocks.
+    - Automated client rotation across web, mweb, android, and ios extractor backends.
+    - Automatic cookies.txt detection for authenticated downloads.
 
 
 --------------------------------------------------------------------------------
@@ -218,3 +237,75 @@ To run the automated test suite verifying all 13 core subsystems:
 ================================================================================
 Licensed under MIT. Crafted for high-velocity video creators and editors.
 ================================================================================
+
+--------------------------------------------------------------------------------
+7. CONTENT-AWARE REFINEMENT - 4 OCTOBER 2026
+--------------------------------------------------------------------------------
+- Added Auto, Gaming & reactions, Education & how-to, Podcast & opinion,
+  and Stories & comedy profiles to new projects and transcript re-analysis.
+- Ranking checks immediate hooks, slow setup, context and payoff. Audio bonuses
+  are capped so volume alone does not dominate. Topic similarity reduces repeats.
+- New YouTube downloads preserve public replay heatmaps when yt-dlp provides them.
+  Above-baseline replay interest adds at most 8 points. Missing data falls back
+  gracefully to local analysis. No accounts, paid APIs, telemetry or cloud inference.
+- Clip cards show content fit, opening/payoff review hints, evidence source,
+  score breakdowns and cautions. These are editorial estimates, NOT predicted
+  views, live trends, a trained viral model, or access to private algorithms.
+- Improved readable card typography, focus outlines, reduced-motion behavior;
+  removed external Google font requests so the UI works fully offline.
+- Kept existing tracking, waveform, manual editing and multi-format exports.
+  Fixed keyboard shortcuts intercepting buttons and save/render sequencing.
+- Research: YouTube Search and discovery tips - Shorts:
+  https://support.google.com/youtube/answer/11914225
+  TikTok How TikTok recommends content:
+  https://support.tiktok.com/en/using-tiktok/exploring-videos/how-tiktok-recommends-content
+  These describe watch choice, watch time and completion signals; our scoring
+  weights are local design choices, not platform-provided weights.
+- Verified: 20 tests pass; production frontend builds; fresh public YouTube
+  download, CPU transcription and actual replay metadata retrieval; captioned
+  1080x1920 MP4 export, full decode, metadata, ZIP and retry recovery.
+
+--------------------------------------------------------------------------------
+8. PUBLIC SHORTS REFERENCE DATABASE - 5 OCTOBER 2026
+--------------------------------------------------------------------------------
+Added a sidebar library backed by data/public_shorts.sqlite3. Collect free public
+YouTube metadata by topic or video links, inspect best-performing collected examples,
+refresh counts, preserve daily snapshots and export JSON. No video downloads, API
+keys, paid services or new dependencies. Public views, likes and comments are not
+private retention analytics. Missing counts stay unavailable.
+
+Relevant fresh examples contribute at most +6 to a clip's editorial score, with
+source links and matching terms shown. Matching is local and can be disabled in
+project settings. Your transcript is never uploaded or searched online. Existing
+projects require user-requested re-analysis to apply the database.
+
+Verified real Shorts metadata, topic discovery, browser refresh and SQLite history;
+25 tests pass, 3 older video-fixture checks skip when their source file is absent.
+See README.md for scoring limits and TEST_RESULTS.md for verification details.
+
+
+## Monthly trends page — 5 October 2026
+
+Open **Monthly trends** in the sidebar (http://127.0.0.1:8000/#trends).
+Choose an upload month, topic and format, then select **Scan this month**.
+Top 5 & rankings is the default. Topic cards summarize the median performance,
+number of examples and independent channels; the leaderboard can sort by public
+views, likes or lifetime average views/day. Titles link to the original Shorts.
+
+Discovery uses the existing yt-dlp installation and stores public metadata in
+`data/public_shorts.sqlite3`. It checks at most six results per topic across seven
+topics, validates real upload dates and vertical/square dimensions, and shares the
+reference library used by clip scoring. No videos or private transcripts are uploaded.
+Internet access is required for discovery; saved results remain local.
+
+This is a collected sample, not a comprehensive global trend chart. Month refers
+to upload date, not views earned in that month. Counts are cumulative at collection.
+Topic/format labels come from titles. Topics without a 1,000-view example show
+“Low reach so far”; this threshold is only a screening aid. The initial October
+scan found seven matching records with low reach, so no strong trend is claimed.
+Earlier months may have no matching results. Add known examples through the public
+reference library to expand the sample. Scanning never re-renders existing projects.
+
+Implementation: backend/services/trends.py, backend/api/trends.py,
+frontend/src/components/TrendsPage.jsx, sidebar routing/style updates, and
+hidden-editor keyboard/playback handling. No new dependencies.

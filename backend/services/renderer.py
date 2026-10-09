@@ -13,7 +13,7 @@ def write_metadata(project, clip, target):
     metadata = dict(
         original_source=project.get('url') or project['title'],
         **{k: clip.get(k) for k in ('start', 'end', 'duration', 'title', 'hook', 'score', 'transcript', 'tags',
-                                    'score_breakdown', 'cautions', 'score_source', 'edited')},
+                                    'score_breakdown', 'cautions', 'score_source', 'edited', 'audience')},
         format=project['settings']['ratio'], layout=clip.get('layout', 'crop'),
         crop_x=clip.get('crop_x', 50), captions=clip.get('captions', True),
         caption_position=clip.get('caption_position', 'lower'),

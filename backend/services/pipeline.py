@@ -52,8 +52,25 @@ def process(pid):
             from .media import compute_audio_energy
             signals['audio_energy'] = compute_audio_energy(audio)
             signals_file.write_text(json.dumps(signals, indent=2), encoding='utf-8')
+        audience_file = base/'source'/'audience.json'
+        if audience_file.exists():
+            try:
+                signals['heatmap'] = json.loads(audience_file.read_text(encoding='utf-8')).get('heatmap', [])
+            except (ValueError, OSError):
+                pass
         progress('analyzing moments', 85)
-        candidates = analyze(transcript, project['settings'], signals, duration)
+        if project['settings'].get('use_public_benchmarks', True):
+            from .benchmarks import load_index
+            try:
+                signals['benchmark_index'] = load_index()
+            except Exception:
+                logging.warning('Public benchmark database unavailable; using local analysis', exc_info=True)
+        analysis_settings = dict(project['settings'])
+        if analysis_settings.get('content_profile','auto') == 'auto':
+            from .streamer import public_moment
+            if public_moment(project.get('title','')):
+                analysis_settings['content_profile'] = 'streamer'
+        candidates = analyze(transcript, analysis_settings, signals, duration)
         project.pop('warning',None)
         if project['settings'].get('ollama_model'):
             progress('local LLM review', 90)

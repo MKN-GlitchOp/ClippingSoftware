@@ -6,6 +6,8 @@ frontend/node_modules/
 # Local data & models
 projects/
 models/
+data/
+tests/public-search-probe.json
 test_tmp/
 .tmp_pytest/
 
@@ -14,6 +16,7 @@ tests/live_project.txt
 tests/upload_project.txt
 tests/*.jpg
 tests/runtime-refine*/
+tests/runtime-streamer*/
 tests/artifacts/
 __pycache__/
 */__pycache__/
@@ -25,3 +28,9 @@ frontend/dist/
 *.log
 *.tmp
 *.rendering.mp4
+Downloads/
+sample_short/
+top5_final/
+sample_contact.jpg
+tests/*.png
+tests/*.json
