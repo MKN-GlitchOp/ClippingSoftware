@@ -92,7 +92,8 @@ def render_clip(project, clip, progress=None, export_dir=None, face_tracking=Non
                               '-t', str(clip['end'] - clip['start']), '-filter_complex_threads', '2',
                               '-filter_complex', filters + '[out]', '-map', '[out]', '-map', '0:a:0',
                               '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11',
-                              '-c:v', 'libx264', '-threads', '4', '-preset', 'veryfast', '-crf', '21',
+                              '-c:v', 'libx264', '-threads', '4', '-preset', 'fast', '-crf', '18',
+                              '-tune', 'film', '-maxrate', '14M', '-bufsize', '28M',
                               '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', str(temporary)],
                              clip['end'] - clip['start'], progress, cwd=base / 'exports')
         media = probe(temporary)
@@ -119,7 +120,10 @@ def render_clip(project, clip, progress=None, export_dir=None, face_tracking=Non
 
         return name
     finally:
-        temporary.unlink(missing_ok=True)
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def render_project(pid, ids=None, ratio=None, export_dir=None, resolution=None, captions=None, export_srt=None, face_tracking=None):

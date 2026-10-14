@@ -50,9 +50,10 @@ def download(url, folder, progress):
 
     cookie_file = Path('cookies.txt')
     options = dict(
-        format='bv*[height<=1080][vcodec^=avc]+ba[acodec^=mp4a]/b[height<=1080]/bv*[height<=1080]+ba/b',
+        format='bv*[height<=2160]+ba/b',
         outtmpl=str(folder / 'video.%(ext)s'),
         merge_output_format='mp4',
+        overwrites=True,
         noplaylist=True,
         progress_hooks=[hook],
         quiet=True,
@@ -63,8 +64,7 @@ def download(url, folder, progress):
         fragment_retries=3,
         extractor_args={
             'youtube': {
-                'player_client': ['web', 'mweb', 'android', 'ios'],
-                'player_skip': ['webpage', 'configs'],
+                'player_client': ['web_embedded', 'tv_simply', 'tv_downgraded', 'web', 'android_vr', 'mweb', 'android', 'ios'],
             }
         },
         js_runtimes={'node': {}},

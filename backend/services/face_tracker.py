@@ -189,4 +189,4 @@ def build_face_tracking_filter(keyframes: list[tuple[float, float]], ratio: str 
         lerp = f'{p0:.3f}+({p1 - p0:.3f})*(t-{t0:.2f})/{dt:.2f}'
         expr = f'if(lt(t\\,{t1:.2f})\\,{lerp}\\,{expr})'
 
-    return f'[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}:(iw-ow)*({expr}):(ih-oh)/2,setsar=1'
+    return f'[0:v]scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos+accurate_rnd,crop={width}:{height}:(iw-ow)*({expr}):(ih-oh)/2,cas=0.3,setsar=1'
