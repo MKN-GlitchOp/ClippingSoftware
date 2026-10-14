@@ -31,8 +31,103 @@ you at 5-10 clips, enforce server queues, throttle resolutions, and watermark ex
 
 
 --------------------------------------------------------------------------------
-2. COMPREHENSIVE LIST OF OVERHAULS & FEATURES IMPLEMENTED
+2. PRODUCT VISION: WHAT WE WANT TO GO FOR INSTEAD
 --------------------------------------------------------------------------------
+LocalCut Pro Studio is built from the ground up as a creator-first rebellion
+against cloud clipping SaaS platforms (EveryGen.ai, Opus Clip, Submagic, Klap).
+Instead of paying $20-$100/month for throttled queues, blurry 720p compression,
+strict 5-clip caps, and generic linear snippet cutting, here is EXACTLY what we
+go for instead:
+
+[1] THE "SUMMARIZE & COLD-OPEN HOOK" VIRAL FORMAT (DROPOUTS & SIDEMEN 20V1 STYLE)
+    * The Problem with Standard Clippers:
+      EveryGen, Opus, and standard AI clippers blindly extract linear chronological
+      chunks. They start at the natural beginning of a conversation, which is often
+      slow, expository, and causes a 70%+ viewer swipe-away rate within the first 2
+      seconds on TikTok, YouTube Shorts, and Instagram Reels.
+    * What We Go For Instead:
+      - Explosive Climax Cold-Open: LocalCut automatically extracts a 2.0s - 3.5s
+        high-stakes punchline, dramatic reaction, or shocking climax cue from the
+        end of the moment and prepends it to the very start (t = 0.0s) of the short.
+      - "WAIT FOR IT..." Viral Teaser Badge: Overlays a high-retention pill badge
+        (e.g., "⚡ WAIT FOR IT...", "😱 BEST PART...", "🔥 WATCH TILL END", "⚠️ NO WAY...")
+        specifically during the cold-open hook so viewers immediately know an insane
+        payoff is coming.
+      - Seamless Context Retransmission: Cuts smoothly from the explosive teaser
+        straight into the story setup / context buildup WITHOUT spoiling the full scene.
+      - Strategic Cliffhanger Cut: Option to end the short right before the final
+        punchline resolves, driving massive comment debate ("WHERE IS PART 2?!",
+        "WHAT DID HE SAY?!"), skyrocketing algorithmic watch time, and driving
+        traffic to the full-length video.
+      - 1-Click Automation & Manual Precision: Enabled via `summarize_mode` in
+        Auto-Pilot or New Project settings, with tactile visual controls in the
+        Clip Editor to adjust hook start/end, preview the teaser, and customize badges.
+
+[2] STUDIO-GRADE CRISP VISUALS & AUDIO (SOLVING "AWFUL RESOLUTION")
+    * The Problem with Cloud Clippers:
+      Cloud tools heavily compress exports to minimize their bandwidth and compute
+      costs. Cropping 1920x1080 horizontal footage into vertical 1080x1920 9:16 results
+      in pixelated, soft, and muddy video with washed-out dialogue.
+    * What We Go For Instead:
+      - Visually Lossless CRF 18 H.264 Encoding: High-profile encoding preserving
+        crisp facial features, hair detail, and sharp text.
+      - Lanczos High-Order Resampling: High-accuracy scaling filtergraph
+        (`scale=1080:1920:flags=lanczos+accurate_rnd`) that avoids bilinear blurring
+        when re-framing 16:9 widescreen into vertical 9:16.
+      - Contrast Adaptive Sharpening (CAS / unsharp): Subtle sharpening filter pass
+        to restore textures and edge acuity during crop and pan operations.
+      - Multi-Aspect Ratio Freedom: Instant switching between 9:16 (Shorts/TikTok/Reels),
+        16:9 (YouTube desktop), and 1:1 (Square social feeds) with smart blur padding.
+      - EBU R128 Broadcast Loudness Mastering: Automatic `-14 LUFS` normalization
+        with `-1.5 dBTP` true-peak limiting (`loudnorm`) baked directly into the
+        FFmpeg filtergraph for punchy, distortion-free mobile speaker playback.
+
+[3] "PASTE-TO-POST" INSTANT CREATOR VELOCITY
+    * What We Go For Instead:
+      Zero manual friction. A single automated pipeline:
+      1. Paste YouTube URL or drop local video file.
+      2. Automated high-speed stream download with YouTube challenge bypass.
+      3. Faster-Whisper CPU INT8 speech-to-text with word-level timestamps.
+      4. Multi-signal moment ranking (lexical hooks, acoustic energy peaks, speech velocity).
+      5. YuNet ONNX deep-learning face tracking for smooth vertical panning.
+      6. ASS dynamic karaoke subtitles with Alex Hormozi active-word bounce pop (\fscx118\fscy118).
+      7. Ready-to-Post Social Hub: 1-click generation of platform-tailored titles,
+         first-frame hooks, engaging descriptions, and trending hashtag stacks.
+
+[4] ZERO PAYWALLS, EXPANDED DISCOVERY & COMPLETE PRIVACY
+    * What We Go For Instead:
+      - 100% Free & Open: No $20 - $100/mo subscription paywalls, no watermark extortion.
+      - Up to 50 Clips: Discover 5, 10, 15, 25, or up to 50 viral candidate clips across
+        a 2-3 hour podcast or stream (far exceeding the standard 5-clip cap).
+      - Complete Privacy: Video files, audio tracks, and facial data never leave your PC.
+
+[5] NATIVE MCP SERVER FOR CHATGPT & CLAUDE AGENTIC WORKFLOWS
+    * What We Go For Instead:
+      LocalCut runs a built-in Model Context Protocol server (stdio & SSE) enabling
+      ChatGPT and Claude to act as your autonomous executive editor—triggering projects,
+      refining clips, adjusting hooks, and queuing renders via natural language.
+
+--------------------------------------------------------------------------------
+3. COMPREHENSIVE LIST OF OVERHAULS & FEATURES IMPLEMENTED
+--------------------------------------------------------------------------------
+
+[+] VIRAL "SUMMARIZE & COLD-OPEN HOOK" FORMAT (DROPOUTS & SIDEMEN 20V1 STYLE)
+    - Automatically locates and splices an explosive 2.0s - 3.5s climax punchline /
+      reaction to the very beginning of the Short as a curiosity hook.
+    - Features a customizable teaser pill badge:
+      * "⚡ WAIT FOR IT..."
+      * "😱 BEST PART..."
+      * "🔥 WATCH TILL END"
+      * "⚠️ NO WAY..."
+    - Dual-input FFmpeg fast-seek concat (`concat=n=2:v=1:a=0`) with face-tracking
+      keyframe alignment and unified broadcast loudnorm audio filtergraph.
+    - Word-level ASS subtitles automatically synchronised: teaser words mapped from
+      0.0s to T_dur, and main clip dialogue time-shifted by +T_dur.
+    - Dedicated interactive "Teaser Hook" tab in the Clip Editor with 1-click
+      playhead setting, auto-detect button, hook preview, and visual timeline scrubber highlight.
+    - Optional cliffhanger trim to maximize viewer retention, comment debates, and click-throughs.
+
+
 
 [+] 1-CLICK AUTO-PILOT PIPELINE (PASTE LINK TO FINISHED SHORTS)
     - Automatically executes the entire post-production pipeline in the background:
@@ -129,7 +224,7 @@ you at 5-10 clips, enforce server queues, throttle resolutions, and watermark ex
 
 
 --------------------------------------------------------------------------------
-3. PROJECT ARCHITECTURE & FILE STRUCTURE
+4. PROJECT ARCHITECTURE & FILE STRUCTURE
 --------------------------------------------------------------------------------
 
 ClippingSoftware/
@@ -183,7 +278,7 @@ ClippingSoftware/
 
 
 --------------------------------------------------------------------------------
-4. API SPECIFICATION
+5. API SPECIFICATION
 --------------------------------------------------------------------------------
 
 GET    /api/health                         System health, ffmpeg, models, disk space
@@ -210,7 +305,7 @@ POST   /api/projects/{pid}/open-folder     Reveal exports folder in Windows File
 
 
 --------------------------------------------------------------------------------
-5. CONNECTING CHATGPT & CLAUDE VIA MCP
+6. CONNECTING CHATGPT & CLAUDE VIA MCP
 --------------------------------------------------------------------------------
 
 To connect ChatGPT or Claude Desktop directly to your local Clipping Studio:
@@ -238,7 +333,7 @@ To connect ChatGPT or Claude Desktop directly to your local Clipping Studio:
 
 
 --------------------------------------------------------------------------------
-6. QUICK START & INSTALLATION
+7. QUICK START & INSTALLATION
 --------------------------------------------------------------------------------
 
 PREREQUISITES:
@@ -272,7 +367,7 @@ SETUP INSTRUCTIONS:
 
 
 --------------------------------------------------------------------------------
-7. RUNNING TESTS
+8. RUNNING TESTS
 --------------------------------------------------------------------------------
 To run the automated test suite verifying all 40 tests:
    .\.venv\Scripts\python.exe -m pytest --basetemp=h:\Clipping\.tmp_test

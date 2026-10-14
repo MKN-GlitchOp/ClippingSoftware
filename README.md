@@ -11,6 +11,52 @@ A 100% free, private, local AI video-to-shorts workstation engineered to outperf
 - **Native MCP Server**: Directly connects to ChatGPT (SSE) and Claude Desktop (stdio) for conversational clipping workflows.
 - **🚀 Ready to Post Hub**: 1-click generation of platform-specific viral titles, hooks, descriptions, and hashtag stacks for TikTok, Shorts, and Reels.
 
+## 🎯 Product Vision & Architecture: What We're Going For
+
+LocalCut Pro Studio is built from the ground up as a creator-first rebellion against cloud clipping SaaS models (EveryGen.ai, Opus Clip, Submagic, Klap). Instead of paying $20–$100/month for throttled queues, blurry 720p compression, strict 5-clip caps, and generic linear snippet cutting, here is **EXACTLY what we go for instead**:
+
+### 1. 💡 The "Summarize & Cold-Open Hook" Viral Format (Dropouts & Sidemen 20v1 Style)
+* **The Problem with Standard Clippers**:
+  EveryGen, Opus, and standard AI clippers blindly extract linear chronological chunks. They start at the natural beginning of a conversation, which is often slow, expository, and causes a 70%+ viewer swipe-away rate within the first 2 seconds on TikTok, YouTube Shorts, and Instagram Reels.
+* **What We Go For Instead**:
+  - **Explosive Climax Cold-Open**: LocalCut automatically extracts a 2.0s – 3.5s high-stakes punchline, dramatic reaction, or shocking climax cue from the end of the moment and prepends it to the very start ($t = 0.0s$) of the short.
+  - **"WAIT FOR IT..." Viral Teaser Badge**: Overlays a high-retention pill badge (`⚡ WAIT FOR IT...`, `😱 BEST PART...`, `🔥 WATCH TILL END`, `⚠️ NO WAY...`) specifically during the cold-open hook so viewers immediately know an insane payoff is coming.
+  - **Seamless Context Retransmission**: Cuts smoothly from the explosive teaser straight into the story setup / context buildup **without spoiling the full scene**.
+  - **Strategic Cliffhanger Cut**: Option to end the short right before the final punchline resolves, driving massive comment debate (*"WHERE IS PART 2?!"*, *"WHAT DID HE SAY?!"*), skyrocketing algorithmic watch time, and driving traffic to the full-length video.
+  - **1-Click Automation & Manual Precision**: Enabled via `summarize_mode` in Auto-Pilot or New Project settings, with tactile visual controls in the Clip Editor to adjust hook start/end, preview the teaser, and customize badges.
+
+### 2. 💎 Studio-Grade Crisp Visuals & Audio (Solving "Awful Resolution")
+* **The Problem with Cloud Clippers**:
+  Cloud tools heavily compress exports to minimize their bandwidth and compute costs. Cropping 1920x1080 horizontal footage into vertical 1080x1920 9:16 results in pixelated, soft, and muddy video with washed-out dialogue.
+* **What We Go For Instead**:
+  - **Visually Lossless CRF 18 H.264 Encoding**: High-profile encoding preserving crisp facial features, hair detail, and sharp text.
+  - **Lanczos High-Order Resampling**: High-accuracy scaling filtergraph (`scale=1080:1920:flags=lanczos+accurate_rnd`) that avoids bilinear blurring when re-framing 16:9 widescreen into vertical 9:16.
+  - **Contrast Adaptive Sharpening (CAS / unsharp)**: Subtle sharpening filter pass to restore textures and edge acuity during crop and pan operations.
+  - **Multi-Aspect Ratio Freedom**: Instant switching between 9:16 (Shorts/TikTok/Reels), 16:9 (YouTube desktop), and 1:1 (Square social feeds) with smart blur padding.
+  - **EBU R128 Broadcast Loudness Mastering**: Automatic `-14 LUFS` normalization with `-1.5 dBTP` true-peak limiting (`loudnorm`) baked directly into the FFmpeg filtergraph for punchy, distortion-free mobile speaker playback.
+
+### 3. ⚡ "Paste-to-Post" Instant Creator Velocity
+* **What We Go For Instead**:
+  Zero manual friction. A single automated pipeline:
+  1. Paste YouTube URL or drop local video file.
+  2. Automated high-speed stream download with YouTube challenge bypass.
+  3. Faster-Whisper CPU INT8 speech-to-text with word-level timestamps.
+  4. Multi-signal moment ranking (lexical hooks, acoustic energy peaks, speech velocity).
+  5. YuNet ONNX deep-learning face tracking for smooth vertical panning.
+  6. ASS dynamic karaoke subtitles with Alex Hormozi active-word bounce pop (`\fscx118\fscy118`).
+  7. Ready-to-Post Social Hub: 1-click generation of platform-tailored titles, first-frame hooks, engaging descriptions, and trending hashtag stacks.
+
+### 4. 🔓 Zero Paywalls, Expanded Discovery & Complete Privacy
+* **What We Go For Instead**:
+  - **100% Free & Open**: No $20–$100/mo subscription paywalls, no watermark extortion.
+  - **Up to 50 Clips**: Discover 5, 10, 15, 25, or up to 50 viral candidate clips across a 2-3 hour podcast or stream (far exceeding the standard 5-clip cap).
+  - **Complete Privacy**: Video files, audio tracks, and facial data never leave your PC.
+
+### 5. 🤖 Native MCP Server for ChatGPT & Claude Agentic Workflows
+* **What We Go For Instead**:
+  LocalCut runs a built-in Model Context Protocol server (stdio & SSE) enabling ChatGPT and Claude to act as your autonomous executive editor—triggering projects, refining clips, adjusting hooks, and queuing renders via natural language.
+
+
 ## Install on Windows
 
 1. Install **Python 3.12 (64-bit)** from [python.org](https://www.python.org/downloads/windows/). Select **Add python.exe to PATH** and the **Python launcher**. Alternatively, in PowerShell: `winget install -e --id Python.Python.3.12`.
@@ -139,7 +185,7 @@ The live integration test downloads a public YouTube video and transcribes all i
 
 Verified API references: [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg filters](https://ffmpeg.org/ffmpeg-filters.html), [Ollama generation API](https://docs.ollama.com/api/generate). PyAV is pinned to 16.1.0 because PyAV 19 removed an argument used by Faster-Whisper 1.2.1.
 
-Future extensions: speaker/face tracking, punch-ins, jump cuts, caption templates, gameplay scoring, sound effects, split-screen, profiles, batch jobs and upload integrations. These are not part of the first MVP.
+Built-in advanced capabilities: YuNet deep-learning face tracking with smooth camera panning, customizable viral subtitle animations (Alex Hormozi scale bounce pop, MrBeast punch, Cyber Neon, Boxed Pill), EBU R128 loudness normalization, multi-aspect ratio rendering (9:16, 16:9, 1:1), and Dropouts/Sidemen-style teaser hook summarization.
 
 ## MVP limitations
 
