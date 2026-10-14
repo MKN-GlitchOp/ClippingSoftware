@@ -55,3 +55,5 @@ export const clipSrtUrl = (pid, cid) => `/api/projects/${pid}/clips/${cid}/srt`;
 export const openFolder = (pid, path) => post(`/projects/${pid}/open-folder`, { path });
 export const fetchSystemDirs = () => api('/system-directories');
 export const fetchWaveform = pid => api(`/projects/${pid}/waveform`);
+export const fetchSocialPost = (pid, cid) => api(`/projects/${pid}/clips/${cid}/social`);
+export const fetchSubtitlePresets = () => api('/subtitle-presets');

@@ -372,12 +372,13 @@ def analyze(transcript, settings, signals, duration):
                 reason=reason, score_breakdown=breakdown, cautions=cautions, title=suggested_title(passage),
                 hook=first['text'], tags=keywords(text), transcript=text, audience=audience
             ))
-        candidates.extend(sorted(local, key=lambda c: (-c['score'], c['duration']))[:2])
+        limit_per_pos = max(2, min(8, max(2, settings.get('num_clips', 10) // 4)))
+        candidates.extend(sorted(local, key=lambda c: (-c['score'], c['duration']))[:limit_per_pos])
 
     if not candidates:
         raise ValueError('No complete speech passage fits these lengths. Try a shorter minimum or a longer maximum.')
 
-    num_target = settings['num_clips']
+    num_target = settings.get('num_clips', 10)
     sorted_candidates = sorted(candidates, key=lambda c: (-c['score'], c['duration']))
     selected = []
 
@@ -403,7 +404,11 @@ def analyze(transcript, settings, signals, duration):
         candidate.update(
             id=str(idx + 1),
             selected=True,
-            captions=settings['captions'],
+            captions=settings.get('captions', True),
+            caption_style=settings.get('caption_style', 'hormozi'),
+            caption_bounce=settings.get('caption_bounce', True),
+            caption_chunk_size=settings.get('caption_chunk_size', 'phrase'),
+            caption_color=settings.get('caption_color', 'yellow'),
             layout=settings.get('layout', 'crop'),
             crop_x=50,
             face_tracking=settings.get('face_tracking', True),

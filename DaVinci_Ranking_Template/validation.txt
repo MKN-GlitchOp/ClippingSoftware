@@ -1,2 +1,0 @@
-PASS: archive integrity; 35 nodes; 20 Inspector controls; 55 valid node references; balanced syntax; 14 TextPlus nodes.
-Resolve runtime render: not performed.

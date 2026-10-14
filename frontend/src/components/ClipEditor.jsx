@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState, useCallback} from 'react';
-import {clipUrl, clipSrtUrl, time, openFolder, fetchSystemDirs, fetchWaveform} from '../lib/api';
+import {clipUrl, clipSrtUrl, time, openFolder, fetchSystemDirs, fetchWaveform, fetchSocialPost} from '../lib/api';
 import {
   PlayIcon, DownloadIcon, SlidersIcon,
   SubtitlesIcon, ClockIcon, CopyIcon, TrashIcon, FolderIcon
@@ -10,6 +10,8 @@ export function editorKey(clip) {
     clip.id, clip.start, clip.end, clip.title, clip.hook, clip.captions,
     clip.ratio || '9:16', clip.layout || 'crop', clip.crop_x ?? 50, clip.caption_position || 'lower',
     clip.caption_color || 'yellow', clip.caption_uppercase ?? false,
+    clip.caption_style || 'hormozi', clip.caption_bounce ?? true, clip.caption_chunk_size || 'phrase',
+    clip.caption_font || 'Impact', clip.caption_offset_y ?? '',
     clip.resolution || '1080p', clip.export_srt ?? true, clip.export_dir || '',
     clip.face_tracking ?? true
   ].join('|');
@@ -34,10 +36,24 @@ const COLOR_PRESETS = [
   { id: 'green', label: 'Green', hex: '#00ff66' },
   { id: 'cyan', label: 'Cyan', hex: '#00e5ff' },
   { id: 'gold', label: 'Gold', hex: '#ffd700' },
+  { id: 'red', label: 'Red', hex: '#ff3344' },
+  { id: 'magenta', label: 'Magenta', hex: '#ff00aa' },
+  { id: 'orange', label: 'Orange', hex: '#ff8800' },
   { id: 'white', label: 'White', hex: '#ffffff' }
 ];
 
-export default function ClipEditor({project, clip, busy, onSave, onRender, onDelete, onDirtyChange, visible=true}) {
+const SUBTITLE_PRESETS = [
+  { id: 'hormozi', label: 'Hormozi Pop', font: 'Impact', color: 'yellow', bounce: true, uppercase: true, chunk_size: 'phrase', desc: 'Impact font, active word bounce, thick border' },
+  { id: 'beast', label: 'MrBeast Punch', font: 'Arial Black', color: 'yellow', bounce: true, uppercase: true, chunk_size: 'single', desc: 'Punchy 1-2 words rapid pop, bold uppercase' },
+  { id: 'neon', label: 'Cyber Neon', font: 'Montserrat', color: 'cyan', bounce: true, uppercase: true, chunk_size: 'phrase', desc: 'Cyan glow, futuristic modern high-contrast aesthetic' },
+  { id: 'boxed', label: 'Boxed Karaoke', font: 'Montserrat', color: 'yellow', bounce: false, uppercase: false, chunk_size: 'phrase', desc: 'Submagic translucent black rounded pill background' },
+  { id: 'minimal', label: 'Minimalist', font: 'Segoe UI', color: 'mint', bounce: false, uppercase: false, chunk_size: 'phrase', desc: 'Clean mint dropped shadow, subtle and elegant' },
+  { id: 'classic', label: 'Classic', font: 'Segoe UI', color: 'yellow', bounce: false, uppercase: false, chunk_size: 'phrase', desc: 'Clean Segoe UI with standard yellow outline' }
+];
+
+const FONT_OPTIONS = ['Impact', 'Arial Black', 'Montserrat', 'Segoe UI', 'JetBrains Mono', 'Rubik'];
+
+export default function ClipEditor({project, clip, busy, onSave, onRender, onDelete, onDirtyChange, visible=true, initialTab='timing'}) {
   const original = {
     start: clip.start,
     end: clip.end,
@@ -53,11 +69,22 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
     face_tracking: clip.face_tracking ?? true,
     caption_position: clip.caption_position || 'lower',
     caption_color: clip.caption_color || 'yellow',
-    caption_uppercase: Boolean(clip.caption_uppercase)
+    caption_uppercase: Boolean(clip.caption_uppercase),
+    caption_style: clip.caption_style || 'hormozi',
+    caption_bounce: clip.caption_bounce ?? true,
+    caption_chunk_size: clip.caption_chunk_size || 'phrase',
+    caption_font: clip.caption_font || 'Impact',
+    caption_offset_y: clip.caption_offset_y ?? (clip.caption_position === 'upper' ? 10 : 22),
+    caption_size: clip.caption_size || ''
   };
 
   const [draft, setDraft] = useState(original);
-  const [tab, setTab] = useState('timing');
+  const [tab, setTab] = useState(initialTab || 'timing');
+  useEffect(() => { if (initialTab) setTab(initialTab); }, [initialTab, clip.id]);
+  const [socialData, setSocialData] = useState(null);
+  const [socialPlatform, setSocialPlatform] = useState('tiktok');
+  const [copiedKey, setCopiedKey] = useState('');
+  const [socialLoading, setSocialLoading] = useState(false);
   const [preview, setPreview] = useState(clip.file ? 'export' : 'source');
   const [mediaError, setMediaError] = useState('');
   const [ready, setReady] = useState(false);
@@ -109,6 +136,27 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
     onDirtyChange(dirty);
     return () => onDirtyChange(false);
   }, [dirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (tab === 'post') {
+      setSocialLoading(true);
+      fetchSocialPost(project.id, clip.id)
+        .then(data => {
+          setSocialData(data);
+          setSocialLoading(false);
+        })
+        .catch(() => {
+          setSocialLoading(false);
+        });
+    }
+  }, [tab, project.id, clip.id]);
+
+  const copyToClipboard = (text, key) => {
+    if (!text) return;
+    navigator.clipboard?.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(''), 2200);
+  };
 
   useEffect(() => {
     setPreview(clip.file ? 'export' : 'source');
@@ -607,6 +655,13 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
           <SubtitlesIcon size={13} />
           <span>HOOK & TEXT</span>
         </button>
+        <button
+          type="button"
+          className={`sub-tab post-hub-tab ${tab === 'post' ? 'active' : ''}`}
+          onClick={() => setTab('post')}
+        >
+          <span>🚀 READY TO POST</span>
+        </button>
       </div>
 
       {/* Tab Panels */}
@@ -834,6 +889,91 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
             {/* Subtitle Appearance Settings */}
             {draft.captions && (
               <>
+                {/* Viral Subtitle Presets Grid */}
+                <div className="control-group">
+                  <span className="control-label">VIRAL SUBTITLE PRESETS</span>
+                  <div className="sub-presets-picker-grid">
+                    {SUBTITLE_PRESETS.map(sp => (
+                      <button
+                        key={sp.id}
+                        type="button"
+                        className={`sub-preset-pick-btn ${draft.caption_style === sp.id ? 'active' : ''}`}
+                        onClick={() => {
+                          set('caption_style', sp.id);
+                          set('caption_font', sp.font);
+                          set('caption_color', sp.color);
+                          set('caption_bounce', sp.bounce);
+                          set('caption_uppercase', sp.uppercase);
+                          set('caption_chunk_size', sp.chunk_size);
+                        }}
+                      >
+                        <span className="preset-pick-name">{sp.label}</span>
+                        <span className="preset-pick-desc">{sp.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Subtitle Fine-Tuning: Bounce & Chunking */}
+                <div className="control-group duo-grid">
+                  <div>
+                    <span className="control-label">ANIMATION & BOUNCE</span>
+                    <button
+                      type="button"
+                      className={`duo-btn ${draft.caption_bounce ? 'active' : ''}`}
+                      onClick={() => set('caption_bounce', !draft.caption_bounce)}
+                    >
+                      {draft.caption_bounce ? '✨ Word Bounce POP (ON)' : 'Static Highlight (OFF)'}
+                    </button>
+                  </div>
+
+                  <div>
+                    <span className="control-label">WORD DISPLAY MODE</span>
+                    <div className="duo-toggle">
+                      <button
+                        type="button"
+                        className={`duo-btn ${draft.caption_chunk_size === 'phrase' ? 'active' : ''}`}
+                        onClick={() => set('caption_chunk_size', 'phrase')}
+                      >
+                        Phrase (3–4 w)
+                      </button>
+                      <button
+                        type="button"
+                        className={`duo-btn ${draft.caption_chunk_size === 'single' ? 'active' : ''}`}
+                        onClick={() => set('caption_chunk_size', 'single')}
+                      >
+                        Punchy (1–2 w)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Font and Highlight Color */}
+                <div className="control-group duo-grid">
+                  <div>
+                    <span className="control-label">FONT FAMILY</span>
+                    <select
+                      className="mono-select"
+                      value={draft.caption_font || 'Impact'}
+                      onChange={e => set('caption_font', e.target.value)}
+                    >
+                      {FONT_OPTIONS.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <span className="control-label">CAPITALIZATION</span>
+                    <button
+                      type="button"
+                      className={`duo-btn ${draft.caption_uppercase ? 'active' : ''}`}
+                      onClick={() => set('caption_uppercase', !draft.caption_uppercase)}
+                    >
+                      {draft.caption_uppercase ? 'ALL CAPS' : 'Normal Case'}
+                    </button>
+                  </div>
+                </div>
                 <div className="control-group">
                   <span className="control-label">SUBTITLE HIGHLIGHT COLOR</span>
                   <div className="color-presets-row">
@@ -851,9 +991,9 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
                   </div>
                 </div>
 
-                <div className="control-group duo-grid">
+                <div className="control-group">
                   <div>
-                    <span className="control-label">SUBTITLE POSITION</span>
+                    <span className="control-label">SUBTITLE POSITION & HEIGHT OFFSET</span>
                     <div className="duo-toggle">
                       <button
                         type="button"
@@ -869,6 +1009,28 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
                       >
                         Upper Area
                       </button>
+                      <button
+                        type="button"
+                        className={`duo-btn ${draft.caption_position === 'middle' ? 'active' : ''}`}
+                        onClick={() => { set('caption_position', 'middle'); set('caption_offset_y', 50); }}
+                      >
+                        Middle
+                      </button>
+                    </div>
+                    <div style={{ marginTop: '0.65rem' }}>
+                      <input
+                        type="range"
+                        className="deck-range"
+                        min="5"
+                        max="92"
+                        value={draft.caption_offset_y ?? 22}
+                        onChange={e => set('caption_offset_y', Number(e.target.value))}
+                      />
+                      <div className="slider-stats-row">
+                        <span>BOTTOM (5%)</span>
+                        <span>OFFSET: {draft.caption_offset_y ?? 22}%</span>
+                        <span>TOP (92%)</span>
+                      </div>
                     </div>
                   </div>
 
@@ -1070,6 +1232,175 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
               </div>
               <p className="transcript-content">{clip.transcript || 'No transcript text in chosen range.'}</p>
             </div>
+          </div>
+        )}
+
+        {/* 5. READY TO POST HUB */}
+        {tab === 'post' && (
+          <div className="panel-post-hub">
+            <div className="post-hub-header">
+              <div className="hub-headline">
+                <span className="hub-badge">🚀 1-CLICK POSTING STUDIO</span>
+                <span className="hub-sub">Copy viral titles, captions, hashtags, and grab the video for instant posting.</span>
+              </div>
+              <div className="platform-pills-row">
+                <button
+                  type="button"
+                  className={`platform-pill ${socialPlatform === 'tiktok' ? 'active' : ''}`}
+                  onClick={() => setSocialPlatform('tiktok')}
+                >
+                  TikTok
+                </button>
+                <button
+                  type="button"
+                  className={`platform-pill ${socialPlatform === 'youtube' ? 'active' : ''}`}
+                  onClick={() => setSocialPlatform('youtube')}
+                >
+                  YouTube Shorts
+                </button>
+                <button
+                  type="button"
+                  className={`platform-pill ${socialPlatform === 'instagram' ? 'active' : ''}`}
+                  onClick={() => setSocialPlatform('instagram')}
+                >
+                  Instagram Reels
+                </button>
+              </div>
+            </div>
+
+            {socialLoading ? (
+              <div className="hub-loading">
+                <span>Generating viral post copy...</span>
+              </div>
+            ) : (
+              <div className="hub-content-deck">
+                {/* 1. Viral Title */}
+                <div className="post-copy-card">
+                  <div className="card-copy-header">
+                    <span className="copy-label">
+                      {socialPlatform === 'youtube' ? 'YOUTUBE SHORTS TITLE' : 'VIRAL VIDEO TITLE'}
+                    </span>
+                    <button
+                      type="button"
+                      className="copy-field-btn"
+                      onClick={() => {
+                        const titleText = socialData?.[socialPlatform]?.title || socialData?.recommended_title || draft.title;
+                        copyToClipboard(titleText, 'title');
+                      }}
+                    >
+                      <CopyIcon size={12} />
+                      <span>{copiedKey === 'title' ? 'COPIED! ✓' : 'Copy Title'}</span>
+                    </button>
+                  </div>
+                  <div className="copy-content-box mono-highlight">
+                    {socialData?.[socialPlatform]?.title || socialData?.recommended_title || draft.title}
+                  </div>
+                </div>
+
+                {/* 2. Caption & Hook */}
+                <div className="post-copy-card">
+                  <div className="card-copy-header">
+                    <span className="copy-label">
+                      {socialPlatform === 'youtube' ? 'DESCRIPTION & TIMESTAMPS' : 'CAPTION & ENGAGEMENT HOOK'}
+                    </span>
+                    <button
+                      type="button"
+                      className="copy-field-btn"
+                      onClick={() => {
+                        const captionText = socialData?.[socialPlatform]?.caption || socialData?.[socialPlatform]?.description || draft.hook || draft.title;
+                        copyToClipboard(captionText, 'caption');
+                      }}
+                    >
+                      <CopyIcon size={12} />
+                      <span>{copiedKey === 'caption' ? 'COPIED! ✓' : 'Copy Caption'}</span>
+                    </button>
+                  </div>
+                  <pre className="copy-content-pre">
+                    {socialData?.[socialPlatform]?.caption || socialData?.[socialPlatform]?.description || `${draft.title}\n\n${draft.hook || ''}\n\n#shorts #fyp #viral`}
+                  </pre>
+                </div>
+
+                {/* 3. Hashtag Stack */}
+                <div className="post-copy-card">
+                  <div className="card-copy-header">
+                    <span className="copy-label">TRENDING HASHTAG STACK</span>
+                    <button
+                      type="button"
+                      className="copy-field-btn"
+                      onClick={() => {
+                        const tagsText = socialData?.[socialPlatform]?.hashtags || '#shorts #fyp #viral #trending';
+                        copyToClipboard(tagsText, 'hashtags');
+                      }}
+                    >
+                      <CopyIcon size={12} />
+                      <span>{copiedKey === 'hashtags' ? 'COPIED! ✓' : 'Copy Hashtags'}</span>
+                    </button>
+                  </div>
+                  <div className="copy-tags-cloud">
+                    {(socialData?.[socialPlatform]?.hashtags || '#shorts #fyp #viral #trending').split(' ').map((tag, idx) => (
+                      <span key={idx} className="hub-tag-badge">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Complete Package Button */}
+                <button
+                  type="button"
+                  className="btn-copy-all-package"
+                  onClick={() => {
+                    const titleText = socialData?.[socialPlatform]?.title || socialData?.recommended_title || draft.title;
+                    const captionText = socialData?.[socialPlatform]?.caption || socialData?.[socialPlatform]?.description || draft.hook || draft.title;
+                    const fullText = `${titleText}\n\n${captionText}`;
+                    copyToClipboard(fullText, 'all');
+                  }}
+                >
+                  <CopyIcon size={14} />
+                  <span>{copiedKey === 'all' ? 'FULL PACKAGE COPIED TO CLIPBOARD! ✓' : '📋 Copy Entire Post Package (Title + Caption + Tags)'}</span>
+                </button>
+
+                {/* Video Export Status & Direct Link */}
+                <div className="post-video-action-box">
+                  <div className="pva-status">
+                    <span className={`status-indicator-dot ${clip.file ? 'ready' : 'pending'}`} />
+                    <span>
+                      {clip.file
+                        ? `Video file ready for upload (${clip.resolution || '1080p'})`
+                        : 'Video not rendered yet — render it below to post.'}
+                    </span>
+                  </div>
+                  {clip.file ? (
+                    <div className="pva-buttons-row">
+                      <a
+                        className="btn-pva-download"
+                        href={`${clipUrl(project.id, clip.file)}?download=true`}
+                        download
+                      >
+                        <DownloadIcon size={13} />
+                        <span>Download MP4</span>
+                      </a>
+                      <button
+                        type="button"
+                        className="btn-pva-folder"
+                        onClick={handleOpenFolder}
+                      >
+                        <FolderIcon size={13} />
+                        <span>Show File in Explorer</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-render-action"
+                      style={{ marginTop: '0.4rem' }}
+                      disabled={busy || dirty || !valid}
+                      onClick={handleRenderClick}
+                    >
+                      ⚡ Render This Clip Now →
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

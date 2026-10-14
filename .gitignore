@@ -10,6 +10,8 @@ data/
 tests/public-search-probe.json
 test_tmp/
 .tmp_pytest/
+.tmp_test/
+.tmp_cache/
 
 # Tests & caches
 tests/live_project.txt

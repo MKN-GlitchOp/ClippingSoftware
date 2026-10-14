@@ -113,6 +113,7 @@ export default function App() {
   } = workspace;
 
   const [activeId, setActiveId] = useState(null);
+  const [editorTab, setEditorTab] = useState('timing');
   const [dirty, setDirty] = useState(false);
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -149,13 +150,14 @@ export default function App() {
     openProject(id);
   };
 
-  const choose = id => {
+  const choose = (id, targetTab = 'timing') => {
     if (dirty && activeId !== id) {
       setError('Save or discard edits before selecting another clip.');
       return;
     }
     setError('');
     setActiveId(id);
+    if (targetTab) setEditorTab(targetTab);
   };
 
   const handleDelete = async (e, id) => {
@@ -541,6 +543,7 @@ export default function App() {
                         busy={disabled}
                         onDirtyChange={setDirty}
                         visible={page==='studio'}
+                        initialTab={editorTab}
                         onSave={values => mutate(`/clips/${active.id}`, values, 'Adjustments saved')}
                         onRender={options => mutate('/render', options || {ids: [active.id]})}
                         onDelete={handleDeleteClip}

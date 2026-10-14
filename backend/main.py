@@ -65,7 +65,11 @@ async def local_requests(request, call_next):
 class Settings(BaseModel):
     use_public_benchmarks: bool = True
     content_profile: Literal['auto','streamer','gaming','education','podcast','story'] = 'auto'
-    num_clips: int = Field(default=5, ge=1, le=20)
+    num_clips: int = Field(default=10, ge=1, le=50)
+    auto_pilot: bool = False
+    caption_style: Literal['hormozi','beast','neon','boxed','minimal','classic'] = 'hormozi'
+    caption_bounce: bool = True
+    caption_chunk_size: Literal['single','phrase'] = 'phrase'
     min_length: float = Field(default=20, ge=3, le=180)
     max_length: float = Field(default=60, ge=3, le=180)
     ratio: Literal['9:16','1:1','16:9'] = '9:16'
@@ -243,7 +247,7 @@ def retry(pid: str):
 class AnalysisOptions(BaseModel):
     use_public_benchmarks: bool = True
     content_profile: Literal['auto','streamer','gaming','education','podcast','story'] = 'auto'
-    num_clips: int = Field(default=5, ge=1, le=20)
+    num_clips: int = Field(default=10, ge=1, le=50)
     min_length: float = Field(default=20, ge=3, le=180)
     max_length: float = Field(default=60, ge=3, le=180)
 
@@ -283,8 +287,14 @@ class ClipEdit(BaseModel):
     hook: str | None = Field(default=None, max_length=500)
     layout: Literal['crop','blur'] | None = None
     crop_x: float | None = Field(default=None, ge=0, le=100, allow_inf_nan=False)
-    caption_position: Literal['lower','upper'] | None = None
-    caption_color: Literal['yellow','mint','green','cyan','gold','white'] | None = None
+    caption_position: Literal['lower','middle','upper'] | None = None
+    caption_color: Literal['yellow','mint','green','cyan','gold','red','magenta','orange','white'] | None = None
+    caption_style: Literal['hormozi','beast','neon','boxed','minimal','classic'] | None = None
+    caption_bounce: bool | None = None
+    caption_chunk_size: Literal['single','phrase'] | None = None
+    caption_font: str | None = None
+    caption_offset_y: float | None = None
+    caption_size: int | None = None
     caption_uppercase: bool | None = None
     resolution: Literal['720p','1080p','4k'] | None = None
     ratio: Literal['9:16', '16:9', '1:1'] | None = None
@@ -381,8 +391,8 @@ def edit_clip(pid: str, cid: str, data: ClipEdit):
         start, end = changes.get('start',c['start']), changes.get('end',c['end'])
         if not 3 <= end-start <= 180 or end > p['media']['duration']:
             raise HTTPException(400, 'Choose a range within the video, between 3 and 180 seconds.')
-        defaults = dict(layout='crop',crop_x=50,caption_position='lower',caption_color='yellow',caption_uppercase=False,face_tracking=True,ratio='9:16',resolution='1080p')
-        changed = any(c.get(k,defaults.get(k)) != changes[k] for k in ('start','end','captions','layout','crop_x','caption_position','caption_color','caption_uppercase','face_tracking','ratio','resolution') if k in changes)
+        defaults = dict(layout='crop',crop_x=50,caption_position='lower',caption_color='yellow',caption_uppercase=False,face_tracking=True,ratio='9:16',resolution='1080p',caption_style='hormozi',caption_bounce=True,caption_chunk_size='phrase')
+        changed = any(c.get(k,defaults.get(k)) != changes[k] for k in ('start','end','captions','layout','crop_x','caption_position','caption_color','caption_uppercase','face_tracking','ratio','resolution','caption_style','caption_bounce','caption_chunk_size','caption_font','caption_offset_y','caption_size') if k in changes)
         c.update(changes,duration=round(end-start,3))
         if changed:
             from backend.services.clip_analysis import clip_text
@@ -600,6 +610,29 @@ def exported(pid: str, name: str, download: bool = False):
     if not target.is_file():
         raise HTTPException(404, 'Export file is missing. Regenerate the clip.')
     return FileResponse(target, media_type='video/mp4', filename=name if download else None)
+
+
+@app.get('/api/projects/{pid}/clips/{cid}/social')
+def clip_social_post(pid: str, cid: str):
+    p = get_project(pid)
+    c = next((c for c in p['candidates'] if c['id'] == cid), None)
+    if not c:
+        raise HTTPException(404, 'Clip not found.')
+    from backend.services.social_generator import build_social_post
+    post_data = build_social_post(c, project_title=p.get('title', ''))
+    if c.get('file'):
+        post_data['export_video_path'] = str(storage.folder(pid) / 'exports' / c['file'])
+    return post_data
+
+
+@app.get('/api/subtitle-presets')
+def subtitle_presets():
+    from backend.services.subtitles import PRESETS, HIGHLIGHT_COLORS
+    return {
+        'presets': PRESETS,
+        'colors': list(HIGHLIGHT_COLORS.keys()),
+        'fonts': ['Impact', 'Arial Black', 'Montserrat', 'Segoe UI', 'JetBrains Mono', 'Rubik']
+    }
 
 
 dist = Path(__file__).resolve().parents[1] / 'frontend' / 'dist'

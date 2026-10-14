@@ -1,6 +1,15 @@
-# LocalCut
+# LocalCut Pro Studio
 
-A free local video-to-shorts workspace for Windows. React + FastAPI, FFmpeg, yt-dlp and Faster-Whisper. Speech inference is explicitly **CPU INT8**. No CUDA, paid APIs, accounts or cloud processing are used. Your RX 6600 XT does not need special drivers for this version.
+A 100% free, private, local AI video-to-shorts workstation engineered to outperform cloud clipping services like EveryGen.ai and Opus Clip. React + FastAPI, FFmpeg, yt-dlp, Faster-Whisper, and OpenCV YuNet face tracking. Features 1-Click Auto-Pilot, viral dynamic subtitles with active-word bounce animation, expanded clip discovery (up to 50 clips), a native Model Context Protocol (MCP) server for ChatGPT/Claude integration, and an instant "Ready to Post" social copy hub. Speech inference is explicitly **CPU INT8**; zero paid APIs, subscription fees, or watermarks.
+
+### ⚡ Highlights: LocalCut vs Cloud Clippers (EveryGen / Opus)
+- **100% Free & Unlimited**: No monthly caps, credit limits, or subscription paywalls.
+- **100% Private & Local**: Runs completely on your own machine. Transcripts, face tracking, and renders never leave your hardware.
+- **Beyond Top 5 Clips**: Discover 5, 10, 15, 25, or up to 50 viral moments per video.
+- **1-Click Auto-Pilot**: Paste a link -> automatically analyze, detect faces, burn viral karaoke captions, and render finished shorts.
+- **Viral Subtitle Presets**: Alex Hormozi Pop (`\fscx118\fscy118` scale bounce), MrBeast Punch, Cyber Neon, Boxed Karaoke Pill, Minimalist, Classic.
+- **Native MCP Server**: Directly connects to ChatGPT (SSE) and Claude Desktop (stdio) for conversational clipping workflows.
+- **🚀 Ready to Post Hub**: 1-click generation of platform-specific viral titles, hooks, descriptions, and hashtag stacks for TikTok, Shorts, and Reels.
 
 ## Install on Windows
 
@@ -65,6 +74,46 @@ tests/                    Scoring and real pipeline checks
 ```
 
 Jobs are serialized to avoid several CPU inference/rendering tasks competing. Projects survive restarts. Interrupted jobs can be retried; there is no automatic resume mid-transcription. Project JSON replaces SQLite for the MVP: it is easier to inspect and needs no database migration. Center crop is the reframing fallback; face tracking is an extension rather than a dependency.
+
+## Model Context Protocol (MCP) Server for ChatGPT & Claude
+
+LocalCut includes a built-in MCP server (`backend/mcp_server.py`) and standard config (`mcp_config.json`) exposing your clipping studio as AI tools:
+- `list_projects`: Inspect current projects and statuses.
+- `create_clipping_project`: Start a new clipping project with URL or file path.
+- `get_project_details`: View candidate clips, viral scores, and transcripts.
+- `edit_clip`: Modify timestamps, viral caption styles, and aspect ratios.
+- `render_clips`: Render MP4 vertical shorts with face tracking.
+- `generate_social_post_metadata`: Generate TikTok / Shorts / Reels titles, hooks, and hashtags.
+- `open_export_folder`: Launch Windows File Explorer directly to rendered files.
+
+### Connecting Claude Desktop
+Add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "localcut": {
+      "command": "h:\\Clipping\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "backend.mcp_server", "--transport", "stdio"],
+      "cwd": "h:\\Clipping"
+    }
+  }
+}
+```
+
+### Connecting ChatGPT (via SSE)
+Start the SSE server:
+```powershell
+.\.venv\Scripts\python.exe -m backend.mcp_server --transport sse --port 8001
+```
+Configure your Custom GPT Action or SSE endpoint to `http://127.0.0.1:8001/sse`.
+
+## Viral Subtitle Presets
+- **Alex Hormozi Pop**: Uppercase bold text with word-by-word scale bounce pop (`\fscx118\fscy118`) and custom highlight color.
+- **MrBeast Punch**: 1-2 word rapid retention bursts with high-impact color contrast.
+- **Cyber Neon**: Cyan glow with electric styling.
+- **Boxed Karaoke**: Submagic-style pill box background (`BorderStyle=3`).
+- **Minimalist**: Clean documentary typography.
+- **Classic**: Standard subtle drop-shadow subtitles.
 
 ## Development and verification
 

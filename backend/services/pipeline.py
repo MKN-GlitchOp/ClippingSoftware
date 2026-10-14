@@ -81,6 +81,12 @@ def process(pid):
         project['candidates'] = candidates
         project['analysis_version'] = ANALYSIS_VERSION
         (base / 'analysis' / 'candidates.json').write_text(json.dumps(candidates, indent=2), encoding='utf-8')
+        if project['settings'].get('auto_pilot', False) and candidates:
+            from .renderer import render_project
+            progress('auto-rendering clips', 92, 'Auto-Pilot: rendering top viral clips with face tracking & captions')
+            auto_ids = [c['id'] for c in candidates if c.get('selected')][:min(len(candidates), 5)]
+            render_project(pid, ids=auto_ids)
+            project = storage.load(pid)
         progress('ready', 100, f'{len(candidates)} moments ready to review')
     except Exception as exc:
         logging.exception('Project processing failed')

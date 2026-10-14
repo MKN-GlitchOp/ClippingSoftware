@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "LocalCut": {
+      "command": "h:\\Clipping\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "backend.mcp_server", "--transport", "stdio"],
+      "env": {
+        "PYTHONPATH": "h:\\Clipping"
+      }
+    }
+  }
+}

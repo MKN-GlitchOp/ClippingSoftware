@@ -1,4 +1,4 @@
-"""ASS word highlight events on a clip-relative timeline."""
+"""ASS word highlight events on a clip-relative timeline with viral styling presets."""
 import re
 
 HIGHLIGHT_COLORS = {
@@ -7,7 +7,86 @@ HIGHLIGHT_COLORS = {
     'green': '&H00FF66&',
     'cyan': '&HFFFF00&',
     'gold': '&H00D7FF&',
+    'red': '&H0000FF&',
+    'magenta': '&HFF00FF&',
+    'orange': '&H0080FF&',
     'white': '&HFFFFFF&'
+}
+
+PRESETS = {
+    'hormozi': {
+        'name': 'Hormozi Pop',
+        'font': 'Impact',
+        'bold': -1,
+        'color': 'yellow',
+        'outline': 5,
+        'shadow': 2,
+        'border_style': 1,
+        'bounce': True,
+        'uppercase': True,
+        'chunk_size': 'phrase'
+    },
+    'beast': {
+        'name': 'MrBeast Punch',
+        'font': 'Arial Black',
+        'bold': -1,
+        'color': 'yellow',
+        'outline': 6,
+        'shadow': 3,
+        'border_style': 1,
+        'bounce': True,
+        'uppercase': True,
+        'chunk_size': 'single'
+    },
+    'neon': {
+        'name': 'Cyber Neon',
+        'font': 'Montserrat',
+        'bold': -1,
+        'color': 'cyan',
+        'outline': 4,
+        'shadow': 4,
+        'border_style': 1,
+        'bounce': True,
+        'uppercase': True,
+        'chunk_size': 'phrase'
+    },
+    'boxed': {
+        'name': 'Boxed Karaoke',
+        'font': 'Montserrat',
+        'bold': -1,
+        'color': 'yellow',
+        'outline': 0,
+        'shadow': 0,
+        'border_style': 3,
+        'back_color': '&H90000000',
+        'bounce': False,
+        'uppercase': False,
+        'chunk_size': 'phrase'
+    },
+    'minimal': {
+        'name': 'Minimalist',
+        'font': 'Segoe UI',
+        'bold': -1,
+        'color': 'mint',
+        'outline': 2,
+        'shadow': 1,
+        'border_style': 1,
+        'bounce': False,
+        'uppercase': False,
+        'chunk_size': 'phrase'
+    },
+    'classic': {
+        'name': 'Classic',
+        'font': 'Segoe UI',
+        'bold': -1,
+        'color': 'yellow',
+        'outline': 4,
+        'shadow': 1,
+        'border_style': 1,
+        'bounce': False,
+        'uppercase': False,
+        'chunk_size': 'phrase'
+    }
 }
 
 
@@ -70,21 +149,65 @@ def make_clip_srt(transcript, clip, path):
 
 
 def make_ass(transcript, clip, path, width, height):
+    style_key = clip.get('caption_style', 'hormozi')
+    preset = PRESETS.get(style_key, PRESETS['hormozi'])
+
+    font_name = clip.get('caption_font') or preset['font']
+    border_style = preset.get('border_style', 1)
+    outline = preset.get('outline', 5)
+    shadow = preset.get('shadow', 2)
+    back_colour = preset.get('back_color', '&H80000000')
+
+    # Font sizing adapted to resolution and orientation
     if width > height:
-        # Landscape (e.g. 1920x1080): comfortable readable font in lower third
-        font_size = clip.get('caption_size') or round(54 * height / 1080)
-        bottom = round(height * (0.08 if clip.get('caption_position') == 'upper' else 0.12))
+        # Landscape
+        base_size = round(56 * height / 1080)
+        default_bottom = round(height * (0.08 if clip.get('caption_position') == 'upper' else 0.12))
         margin_lr = round(width * 0.08)
     else:
-        # Vertical (e.g. 1080x1920) or Square
-        font_size = clip.get('caption_size') or round(68 * width / 1080)
-        bottom = round(height * (0.12 if clip.get('caption_position') == 'upper' else 0.22))
+        # Vertical or Square
+        base_size = round(72 * width / 1080)
+        default_bottom = round(height * (0.12 if clip.get('caption_position') == 'upper' else 0.22))
         margin_lr = round(width * 0.08)
 
-    upper = clip.get('caption_position') == 'upper'
-    alignment = 8 if upper else 2
-    highlight_code = HIGHLIGHT_COLORS.get(clip.get('caption_color', 'yellow'), '&H00FFFF&')
-    is_uppercase = bool(clip.get('caption_uppercase', False))
+    font_size = clip.get('caption_size') or base_size
+
+    pos = clip.get('caption_position', 'lower')
+    if pos == 'upper':
+        alignment = 8
+        bottom = default_bottom
+    elif pos == 'middle':
+        alignment = 5
+        bottom = 0
+    else:
+        alignment = 2
+        bottom = default_bottom
+
+    if clip.get('caption_offset_y') is not None:
+        try:
+            bottom = round(height * (float(clip['caption_offset_y']) / 100.0))
+        except (ValueError, TypeError):
+            pass
+
+    color_key = clip.get('caption_color') or preset.get('color', 'yellow')
+    highlight_code = HIGHLIGHT_COLORS.get(color_key, '&H00FFFF&')
+
+    # Uppercase setting
+    is_uppercase = clip.get('caption_uppercase')
+    if is_uppercase is None:
+        is_uppercase = preset.get('uppercase', False)
+    is_uppercase = bool(is_uppercase)
+
+    # Word bounce / scale pop setting
+    bounce = clip.get('caption_bounce')
+    if bounce is None:
+        bounce = preset.get('bounce', True)
+    bounce = bool(bounce)
+
+    # Chunk mode: single (1-2 words) vs phrase (3-5 words)
+    chunk_mode = clip.get('caption_chunk_size') or preset.get('chunk_size', 'phrase')
+    max_chunk_words = 2 if chunk_mode == 'single' else 4
+    max_chunk_chars = 14 if chunk_mode == 'single' else 24
 
     header = f'''[Script Info]
 ScriptType: v4.00+
@@ -94,13 +217,14 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Segoe UI,{font_size},&H00FFFFFF,&H0000FFFF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,1,{alignment},{margin_lr},{margin_lr},{bottom},1
+Style: Default,{font_name},{font_size},&H00FFFFFF,&H0000FFFF,&H00101010,{back_colour},-1,0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},{margin_lr},{margin_lr},{bottom},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''
+
     words = []
-    for segment in transcript['segments']:
+    for segment in transcript.get('segments', []):
         source_words = segment.get('words')
         if not source_words:
             tokens = segment['text'].split()
@@ -111,11 +235,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             if word['end'] > clip['start'] and word['start'] < clip['end'] and clean_word:
                 if is_uppercase:
                     clean_word = clean_word.upper()
-                words.append(dict(word=clean_word, start=max(0, word['start'] - clip['start']), end=min(clip['end'] - clip['start'], word['end'] - clip['start'])))
+                words.append(dict(
+                    word=clean_word,
+                    start=max(0.0, word['start'] - clip['start']),
+                    end=min(clip['end'] - clip['start'], word['end'] - clip['start'])
+                ))
 
     chunks, chunk = [], []
     for word in words:
-        if chunk and (len(chunk) >= 4 or sum(len(w['word']) + 1 for w in chunk) + len(word['word']) > 24 or word['start'] - chunk[-1]['end'] > 0.65):
+        if chunk and (len(chunk) >= max_chunk_words or sum(len(w['word']) + 1 for w in chunk) + len(word['word']) > max_chunk_chars or word['start'] - chunk[-1]['end'] > 0.65):
             chunks.append(chunk)
             chunk = []
         chunk.append(word)
@@ -131,6 +259,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             end = chunk[i + 1]['start'] if i + 1 < len(chunk) else word['end']
             if end <= word['start']:
                 continue
-            text = ' '.join((rf'{{\c{highlight_code}}}' + w['word'] + r'{\c&HFFFFFF&}') if n == i else w['word'] for n, w in enumerate(chunk))
+            if bounce:
+                # Signature active word scale bounce: enlarged to 118% then resets to standard size
+                active_str = rf'{{\fscx118\fscy118\c{highlight_code}}}' + word['word'] + rf'{{\fscx100\fscy100\c&HFFFFFF&}}'
+            else:
+                active_str = rf'{{\c{highlight_code}}}' + word['word'] + r'{\c&HFFFFFF&}'
+
+            text = ' '.join(active_str if n == i else w['word'] for n, w in enumerate(chunk))
             events.append(f'Dialogue: 0,{ass_time(word["start"])},{ass_time(end)},Default,,0,0,0,,{text}')
+
     path.write_text(header + '\n'.join(events) + '\n', encoding='utf-8-sig')

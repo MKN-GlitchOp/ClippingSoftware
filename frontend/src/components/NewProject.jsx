@@ -8,7 +8,11 @@ import {
 const defaults = {
   content_profile: 'auto',
   use_public_benchmarks: true,
-  num_clips: 5,
+  num_clips: 10,
+  auto_pilot: true,
+  caption_style: 'hormozi',
+  caption_bounce: true,
+  caption_chunk_size: 'phrase',
   min_length: 15,
   max_length: 60,
   ratio: '9:16',
@@ -23,6 +27,17 @@ const PRESETS = [
   { id: 'quick', label: 'Snappy', min: 12, max: 30 },
   { id: 'story', label: 'Extended', min: 35, max: 90 },
   { id: 'custom', label: 'Custom', min: null, max: null }
+];
+
+const CLIP_COUNT_PRESETS = [5, 10, 15, 25, 50];
+
+const SUBTITLE_PRESETS = [
+  { id: 'hormozi', name: 'Hormozi Pop', desc: 'Impact font, active word pop bounce, heavy outline', sample: 'VIRAL POP' },
+  { id: 'beast', name: 'MrBeast Punch', desc: 'Arial Black, 1-2 words rapid punch, bold uppercase', sample: 'MR BEAST' },
+  { id: 'neon', name: 'Cyber Neon', desc: 'Cyan glow, futuristic modern high-contrast aesthetic', sample: 'CYBER NEON' },
+  { id: 'boxed', name: 'Boxed Karaoke', desc: 'Submagic translucent black rounded pill background', sample: 'BOXED PILL' },
+  { id: 'minimal', name: 'Minimalist', desc: 'Clean mint dropped shadow, elegant and subtle', sample: 'MINIMAL' },
+  { id: 'classic', name: 'Classic', desc: 'Clean Segoe UI with standard yellow highlight', sample: 'CLASSIC' }
 ];
 
 export default function NewProject({health, busy, uploadProgress, onCreate}) {
@@ -207,6 +222,29 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
           )}
         </section>
 
+        {/* 1-Click Auto-Pilot Banner */}
+        <section className={`deck-card autopilot-card ${settings.auto_pilot ? 'active' : ''}`}>
+          <div className="autopilot-toggle-row">
+            <div className="autopilot-info">
+              <div className="autopilot-title-row">
+                <span className="autopilot-badge">⚡ 1-CLICK AUTO-PILOT</span>
+                <span className="autopilot-tag">PASTE TO POST</span>
+              </div>
+              <p className="autopilot-sub">
+                Automatically downloads, transcribes, picks top clips with AI face tracking, formats viral captions, and renders finished MP4s ready to post instantly.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={`autopilot-switch-btn ${settings.auto_pilot ? 'on' : 'off'}`}
+              onClick={() => set('auto_pilot', !settings.auto_pilot)}
+            >
+              <span className="switch-status">{settings.auto_pilot ? 'AUTO-PILOT ON' : 'MANUAL REVIEW'}</span>
+              <span className="switch-knob" />
+            </button>
+          </div>
+        </section>
+
         {/* Clip Configuration Deck */}
         <section className="deck-card config-card">
           <div className="card-topline">
@@ -219,9 +257,9 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
             <span className="param-label">ASPECT RATIO</span>
             <div className="ratio-grid">
               {[
-                { id: '9:16', name: '9:16', sub: 'Vertical (Shorts)' },
-                { id: '1:1', name: '1:1', sub: 'Square' },
-                { id: '16:9', name: '16:9', sub: 'Landscape' }
+                { id: '9:16', name: '9:16', sub: 'Vertical (Shorts / TikTok)' },
+                { id: '1:1', name: '1:1', sub: 'Square (Feed)' },
+                { id: '16:9', name: '16:9', sub: 'Landscape (YouTube)' }
               ].map(r => (
                 <button
                   key={r.id}
@@ -236,34 +274,42 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
             </div>
           </div>
 
-          <AudienceProfile value={settings.content_profile} onChange={value => set('content_profile', value)} disabled={busy} useBenchmarks={settings.use_public_benchmarks} onBenchmarksChange={value => set('use_public_benchmarks', value)} />
+          <AudienceProfile
+            value={settings.content_profile}
+            onChange={value => set('content_profile', value)}
+            disabled={busy}
+            useBenchmarks={settings.use_public_benchmarks}
+            onBenchmarksChange={value => set('use_public_benchmarks', value)}
+          />
 
-          {/* Duration Presets & Limits */}
+          {/* Clip Volume & Duration Target */}
           <div className="param-block">
-            <span className="param-label">DURATION TARGET</span>
-            <div className="preset-row">
-              {PRESETS.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`preset-btn ${activePreset === p.id ? 'active' : ''}`}
-                  onClick={() => applyPreset(p)}
-                >
-                  {p.label}
-                </button>
-              ))}
+            <div className="param-header-with-pills">
+              <span className="param-label">CLIP VOLUME (EXPANDED UP TO 50 CLIPS)</span>
+              <div className="quick-volume-pills">
+                {CLIP_COUNT_PRESETS.map(cnt => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    className={`volume-pill ${Number(settings.num_clips) === cnt ? 'active' : ''}`}
+                    onClick={() => set('num_clips', cnt)}
+                  >
+                    Top {cnt}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="trio-inputs">
               <label className="param-input-col">
-                <span>Max Clips</span>
+                <span>Target Clips (1–50)</span>
                 <input
                   type="number"
                   min="1"
-                  max="20"
+                  max="50"
                   className="mono-input"
                   value={settings.num_clips}
-                  onChange={e => set('num_clips', e.target.value)}
+                  onChange={e => set('num_clips', Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
                 />
               </label>
               <label className="param-input-col">
@@ -295,9 +341,22 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
                 />
               </label>
             </div>
+
+            <div className="preset-row" style={{ marginTop: '0.6rem' }}>
+              {PRESETS.map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`preset-btn ${activePreset === p.id ? 'active' : ''}`}
+                  onClick={() => applyPreset(p)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Framing and Captions */}
+          {/* Framing and Subtitles */}
           <div className="param-block">
             <span className="param-label">FRAMING & SUBTITLES</span>
             <div className="framing-toggle-row">
@@ -325,10 +384,60 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
                 onChange={e => set('captions', e.target.checked)}
               />
               <span className="checkbox-text">
-                <strong>Burn-in Highlighted Subtitles</strong>
-                <small>Word-by-word synchronized color captions</small>
+                <strong>Burn-in Viral Captions</strong>
+                <small>High-converting word-by-word synchronized subtitles</small>
               </span>
             </label>
+
+            {settings.captions && (
+              <div className="subtitles-preset-box">
+                <span className="sub-box-title">VIRAL SUBTITLE PRESETS</span>
+                <div className="presets-cards-grid">
+                  {SUBTITLE_PRESETS.map(sp => (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      className={`sub-preset-card ${settings.caption_style === sp.id ? 'active' : ''}`}
+                      onClick={() => set('caption_style', sp.id)}
+                    >
+                      <div className="sp-top">
+                        <span className="sp-name">{sp.name}</span>
+                        <span className="sp-sample">{sp.sample}</span>
+                      </div>
+                      <span className="sp-desc">{sp.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="sub-fine-tuning-row">
+                  <label className="sub-fine-toggle">
+                    <input
+                      type="checkbox"
+                      checked={settings.caption_bounce}
+                      onChange={e => set('caption_bounce', e.target.checked)}
+                    />
+                    <span>Word Bounce / Scale Pop Animation (118% pop)</span>
+                  </label>
+
+                  <div className="sub-chunk-toggle">
+                    <button
+                      type="button"
+                      className={`chunk-pill ${settings.caption_chunk_size === 'phrase' ? 'active' : ''}`}
+                      onClick={() => set('caption_chunk_size', 'phrase')}
+                    >
+                      Phrase (3–4 Words)
+                    </button>
+                    <button
+                      type="button"
+                      className={`chunk-pill ${settings.caption_chunk_size === 'single' ? 'active' : ''}`}
+                      onClick={() => set('caption_chunk_size', 'single')}
+                    >
+                      Punchy (1–2 Words)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Engine Settings */}
@@ -348,24 +457,20 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
                   onChange={e => set('model', e.target.value)}
                   className="mono-select"
                 >
-                  <option value="tiny">Tiny (Fastest, low CPU)</option>
-                  <option value="base">Base (Balanced - Recommended)</option>
-                  <option value="small">Small (High accuracy)</option>
+                  <option value="tiny">tiny (fastest, lightweight)</option>
+                  <option value="base">base (recommended balance)</option>
+                  <option value="small">small (higher precision)</option>
                 </select>
-                <small className="param-hint">
-                  {health?.cached_models?.includes(settings.model) ? 'Cached locally on disk' : 'Downloads once on first use'}
-                </small>
               </label>
 
               <label className="param-input-col">
-                <span>Ollama Model (Optional)</span>
+                <span>Optional Ollama Model</span>
                 <input
                   type="text"
-                  placeholder="e.g. qwen3:4b (leave blank to skip)"
+                  placeholder="e.g. llama3.2 (leave empty for local heuristics)"
                   value={settings.ollama_model}
-                  maxLength={100}
-                  className="mono-input"
                   onChange={e => set('ollama_model', e.target.value)}
+                  className="mono-input"
                 />
               </label>
             </div>
@@ -374,9 +479,9 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
       </fieldset>
 
       {error && (
-        <div className="deck-error-banner" role="alert">
+        <div className="deck-error-banner">
           <span>{error}</span>
-          <button type="button" onClick={() => setError('')}>
+          <button type="button" onClick={() => setError('')} title="Dismiss">
             <CloseIcon size={13} />
           </button>
         </div>
@@ -395,14 +500,18 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
       <div className="execute-bar">
         <div className="execute-status">
           <span className="status-dot-neutral" />
-          <span>Ready • {settings.num_clips} clips ({settings.min_length}s–{settings.max_length}s) • {settings.ratio}</span>
+          <span>
+            {settings.auto_pilot ? '⚡ Auto-Pilot Ready' : 'Manual Ready'} • Top {settings.num_clips} clips ({settings.min_length}s–{settings.max_length}s) • {settings.ratio}
+          </span>
         </div>
         <button
           type="submit"
           className="btn-execute"
           disabled={busy || !health?.ffmpeg || !health?.ffprobe}
         >
-          {busy ? 'Starting...' : 'Extract Moments →'}
+          {busy
+            ? (settings.auto_pilot ? 'Auto-Pilot Running...' : 'Starting...')
+            : (settings.auto_pilot ? '🚀 Auto-Pilot: Extract & Render →' : 'Extract Moments →')}
         </button>
       </div>
     </form>

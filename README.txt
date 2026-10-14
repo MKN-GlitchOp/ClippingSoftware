@@ -1,29 +1,95 @@
 ================================================================================
-LOCALCUT - CLIPPING SOFTWARE STUDIO
-Autonomous Viral Moment Extraction, AI Face Tracking & Multi-Format Video Master
+LOCALCUT - CLIPPING SOFTWARE PRO STUDIO
+100% Free, Private, Local Alternative to EveryGen.ai & Opus Clip
+Autonomous Viral Moment Extraction, AI Face Tracking, Viral Subtitles & MCP Server
 ================================================================================
 
 Repository: https://github.com/MKN-GlitchOp/ClippingSoftware
 Author: Michael Pierce (MKN-GlitchOp)
-Version: 2.0.0 Studio Edition
+Version: 2.5.0 Pro Studio Edition
 
 
 --------------------------------------------------------------------------------
-1. OVERVIEW
+1. OVERVIEW: WHY LOCALCUT SURPASSES CLOUD CLIPPERS (EVERYGEN / OPUS)
 --------------------------------------------------------------------------------
 LocalCut (ClippingSoftware) is a high-performance, local-first AI video clipping
-workstation engineered for creators, streamers, and video editors. It transforms
-long-form YouTube videos, Twitch streams, and podcast recordings into viral,
-broadcast-ready vertical (9:16) shorts, reels, TikToks, and widescreen (16:9) clips.
+workstation engineered for creators, streamers, and video editors who refuse to pay
+monthly subscription fees or sacrifice video privacy.
 
-Everything runs 100% locally on your machine with zero external cloud API
-dependencies. All transcripts, audio analysis, face detection, ASS styling, and
-video rendering occur on your CPU/GPU using modern open-source foundations.
+Unlike cloud tools like EveryGen.ai or Opus Clip that charge $20-$100/month, cap
+you at 5-10 clips, enforce server queues, throttle resolutions, and watermark exports:
+- 100% Free & Unlimited: Process as many videos, hours, and clips as your drive holds.
+- 100% Local & Private: Audio transcription, face detection, ASS subtitle rendering,
+  and video encoding occur entirely on your own CPU/GPU using open-source models.
+- Beyond Top 5: Extract 5, 10, 15, 25, or up to 50 viral candidate clips per video.
+- 1-Click Auto-Pilot: Paste a link -> automatically analyze, detect faces, burn viral
+  captions, and export finished vertical shorts without manual intervention.
+- Ready to Post Hub: Instantly copy viral titles, hooks, descriptions, and trending
+  hashtag stacks formatted specifically for TikTok, YouTube Shorts, and Instagram Reels.
+- Native MCP Server: Connect ChatGPT (via Custom GPT / Actions / SSE) or Claude
+  Desktop / Antigravity directly to your local clipping studio via Model Context Protocol.
 
 
 --------------------------------------------------------------------------------
 2. COMPREHENSIVE LIST OF OVERHAULS & FEATURES IMPLEMENTED
 --------------------------------------------------------------------------------
+
+[+] 1-CLICK AUTO-PILOT PIPELINE (PASTE LINK TO FINISHED SHORTS)
+    - Automatically executes the entire post-production pipeline in the background:
+      1. Downloads / validates video stream (or imports local MP4/MKV).
+      2. Faster-Whisper local speech transcription with word-level timestamps.
+      3. Lexical and acoustic viral moment ranking.
+      4. YuNet deep-learning face tracking for 9:16 vertical framing.
+      5. Generates dynamic ASS karaoke word-bounce subtitles.
+      6. Renders top clips into high-bitrate MP4s with EBU R128 loudness mastering.
+    - Zero manual clicks needed: from URL input directly to finished shorts.
+
+[+] EXPANDED CLIP VOLUME: BEYOND TOP 5 (UP TO 50 CLIPS)
+    - No artificial 5-clip paywall cap.
+    - User-selectable volume presets: Top 5, Top 10, Top 15, Top 25, or Max 50 clips.
+    - Upgraded candidate search engine (`backend/services/clip_analysis.py`) scales
+      moment discovery density proportionally with candidate count, ensuring diverse,
+      non-overlapping moments across the entire video.
+
+[+] VIRAL SUBTITLE STUDIO & ACTIVE WORD BOUNCE ANIMATION
+    - Subtitle engine (`backend/services/subtitles.py`) with 6 viral presets:
+      * Alex Hormozi Pop: Uppercase Impact font, custom highlight with active word
+        scale bounce (\fscx118\fscy118), high-contrast outline.
+      * MrBeast Punch: Punchy 1-2 word rapid pacing, bold warning yellow/red text,
+        maximum energy and retention.
+      * Cyber Neon: Modern electric cyan glow effect with Montserrat bold styling.
+      * Boxed Karaoke: Rounded background pill styling (ASS BorderStyle=3) inspired
+        by Submagic / CapCut popular templates.
+      * Minimalist: Clean, elegant Segoe UI font for podcasts and documentaries.
+      * Classic: Standard centered white text with subtle black drop shadow.
+    - Granular Subtitle Customization:
+      * Active Word Bounce Pop: Smooth ASS scale transformation toggle.
+      * Highlight Colors: Yellow, Mint, Green, Cyan, Gold, Red, Magenta, Orange, White.
+      * Custom Font Selection: Impact, Arial Black, Montserrat, Segoe UI, JetBrains Mono, Rubik.
+      * Chunk Modes: Punchy (1-2 words for rapid retention) vs Phrase (3-4 words).
+      * Vertical Offset Slider: Precise positioning control from 5% (top) to 92% (bottom).
+
+[+] NATIVE MODEL CONTEXT PROTOCOL (MCP) SERVER FOR CHATGPT & CLAUDE
+    - Built-in MCP server (`backend/mcp_server.py`) and configuration (`mcp_config.json`).
+    - Exposes complete LocalCut API as standard AI tools:
+      * `list_projects`: Inspect existing clipping jobs and statuses.
+      * `get_project_details`: View candidate clips, scores, transcript summaries, and exports.
+      * `create_clipping_project`: Trigger automated clipping from URL or file.
+      * `edit_clip`: Modify timestamps, caption styles, aspect ratios, and layouts.
+      * `render_clips`: Render selected or all candidate clips into MP4s.
+      * `generate_social_post_metadata`: Get platform-optimized viral hooks, titles, and hashtags.
+      * `open_export_folder`: Launch Windows File Explorer directly to rendered files.
+    - Dual transport support:
+      * Standard I/O (stdio) for Claude Desktop and Antigravity.
+      * Server-Sent Events (SSE) via `--transport sse --port 8001` for ChatGPT Custom GPTs.
+
+[+] "READY TO POST" SOCIAL STUDIO & 1-CLICK METADATA EXPORT
+    - 5th dedicated tab in the Clip Editor (`frontend/src/components/ClipEditor.jsx`).
+    - Platform-specific copy generators for TikTok, YouTube Shorts, and Instagram Reels.
+    - Generates high-CTR video titles, scroll-stopping first-frame hooks, engaging
+      descriptions with clear CTAs, and curated viral hashtag stacks (#shorts, #fyp, #viral).
+    - 1-Click Copy All Package button to paste directly into your publishing scheduler.
+    - Direct "Download MP4" and "Reveal in Windows Explorer" actions.
 
 [+] MULTI-DIMENSION EXPORT SELECTION (1080x1920 vs 1920x1080 vs 1:1)
     - Full control over orientation and resolution per-clip and in batch:
@@ -31,22 +97,7 @@ video rendering occur on your CPU/GPU using modern open-source foundations.
       * 1920 x 1080 (Landscape 16:9): Standard widescreen for YouTube & desktop.
       * 1080 x 1080 (Square 1:1): Social feeds & Instagram.
     - Quality scaling options: 1080p Full HD (default), 720p HD, and 4K Ultra HD.
-    - Real-time video player monitor screen that dynamically reshapes its aspect
-      ratio between vertical phone format and widescreen monitor preview.
-
-[+] SUBTITLE CONTROLS: BURN-IN VS CLEAN VIDEO + SYNCHRONIZED SRT EXPORT
-    - Choose whether to export with animated subtitles or clean video:
-      * "WITH SUBTITLES (Burn-in)": Styled karaoke word-by-word highlight animation
-        permanently rendered onto the MP4.
-      * "WITHOUT SUBTITLES (Clean)": Pristine, clean video without text overlays.
-    - Synchronized .SRT Subtitle Generation:
-      * Generates a matching .srt subtitle file aligned to second 00:00:00,000 of
-        the clip, ready for drag-and-drop into Adobe Premiere Pro, DaVinci Resolve,
-        or CapCut.
-      * One-click direct SRT download buttons on each candidate card and editor bar.
-    - Intelligent ASS Typography Scaling:
-      * Automatically scales font sizes, outlines, and margins based on aspect ratio
-        and resolution (prevents oversized captions in 16:9 widescreen).
+    - Dynamic monitor preview that automatically conforms to selected aspect ratio.
 
 [+] DEEP-LEARNING AI ACTIVE SPEAKER FACE TRACKING
     - Integrated OpenCV YuNet ONNX face detection (backend/services/face_tracker.py).
@@ -72,55 +123,9 @@ video rendering occur on your CPU/GPU using modern open-source foundations.
     - Powered by GET /api/projects/{pid}/waveform, extracting 0.5s RMS vocal energy
       data so creators can visually pinpoint screams, laughs, and punchlines.
 
-[+] VIRAL CLIP EXTRACTION & EDITORIAL RANKING HEURISTICS
-    - Upgraded lexical model trained on modern creator and streamer reaction hooks
-      ("bro", "chat", "clip that", "ain't no way", "cooked", "trolling", "no cap",
-       "locked in", "crazy", "insane", "gg", etc.).
-    - Multi-signal acoustic scoring bonus:
-      * +12 for high vocal intensity and emotional peaks.
-      * +10 for climactic audio energy crescendos.
-      * +6 for energetic opening bursts.
-    - Sentence-boundary pause snapping: Clips snap to natural speech breaks,
-      preventing mid-syllable cutoffs.
-
 [+] BROADCAST AUDIO MASTERING (EBU R128 LOUDNORM)
     - Integrated broadcast loudness normalization (-af loudnorm=I=-14:TP=-1.5:LRA=11)
       into FFmpeg rendering for punchy, balanced audio optimized for mobile speakers.
-
-[+] CUSTOM DESTINATION FOLDER & WINDOWS EXPLORER INTEGRATION
-    - Allows custom folder destination paths for all rendered exports.
-    - Quick-select presets: Videos\Shorts, Desktop, Downloads, and Default.
-    - One-click "Show in Folder" button that launches Windows Explorer (explorer.exe)
-      directly highlighting the exported files.
-
-[+] BATCH RENDER QUEUE MODAL
-    - Select multiple candidate clips and render them in batch.
-    - Modal provides global dimension selection (1080x1920 vs 1920x1080), subtitle
-      burn-in toggles, SRT export options, face tracking, and folder targets.
-
-[+] JETBRAINS MONO CODE FONT & COHESIVE ORANGE & BLACK STUDIO FLOW
-    - Official Google JetBrains Mono code font integrated across all headers, inputs,
-      readouts, and tabs for a crisp developer-studio aesthetic.
-    - Vibrant tally orange (#ff6200 / #ff781f) and deep carbon obsidian palette
-      flowing consistently through every button, badge, slider, tab, and card.
-    - Eliminated all conflicting teal/green colors and Segoe UI font overrides.
-
-[+] EXPANSIVE & OPTIMIZED CLIP EDITOR WORKSPACE
-    - Completely overhauled from a cramped single-column layout into a spacious dual-zone
-      studio layout:
-      * Stage Zone (Left): Generous video monitor screen (380px wide for 9:16 vertical,
-        780px for 16:9 widescreen), tactile In/Out transport bar, and a double-height 52px
-        waveform scrubber track with draggable [IN] and [OUT] handles.
-      * Inspector Zone (Right): Dedicated parameter tabs (Timing, Framing, Render, Hook)
-        displayed side-by-side on desktop so you can tweak cuts while watching playback.
-    - Pinned candidates list column with independent scroll (340px width) and glowing
-      orange active-selection indicator.
-
-[+] YOUTUBE 429 BOT-PROTECTION BYPASS
-    - Upgraded backend downloader with player_skip=['webpage', 'configs'] to bypass
-      desktop HTML scraping rate limits and 'Sign in to confirm you\'re not a bot' blocks.
-    - Automated client rotation across web, mweb, android, and ios extractor backends.
-    - Automatic cookies.txt detection for authenticated downloads.
 
 
 --------------------------------------------------------------------------------
@@ -130,38 +135,48 @@ video rendering occur on your CPU/GPU using modern open-source foundations.
 ClippingSoftware/
 ├── backend/
 │   ├── main.py                  FastAPI application routes and job dispatcher
+│   ├── mcp_server.py            Model Context Protocol (MCP) server for ChatGPT & Claude
 │   ├── storage.py               Thread-safe file persistence & project state
 │   └── services/
-│       ├── clip_analysis.py     Multi-signal lexical, acoustic & heuristic ranking
+│       ├── clip_analysis.py     Multi-signal lexical, acoustic & heuristic ranking (up to 50 clips)
 │       ├── face_tracker.py      YuNet ONNX deep learning face tracking & FFmpeg lerp
 │       ├── media.py             FFmpeg/FFprobe wrappers, audio extraction & RMS waveform
+│       ├── pipeline.py          Analysis & Auto-Pilot end-to-end rendering orchestration
 │       ├── reframing.py         Filtergraph generation for 9:16, 16:9, 1:1, blur & crop
 │       ├── renderer.py          Export engine with loudnorm, ASS burn-in, SRT & copying
-│       ├── subtitles.py         ASS karaoke animation & synchronized SRT generator
+│       ├── social_generator.py  Platform-tailored hooks, descriptions & hashtag generator
+│       ├── subtitles.py         ASS karaoke engine with bounce scale & 6 viral presets
 │       └── transcription.py     Faster-Whisper local speech transcription
 ├── frontend/
-│   ├── index.html               Vite HTML entry with Source Code Pro font
+│   ├── index.html               Vite HTML entry with JetBrains Mono font
 │   ├── package.json             Node dependencies & build scripts
 │   ├── vite.config.js           Vite bundler configuration
 │   └── src/
 │       ├── App.jsx              Main application shell, header, pipeline & tabs
-│       ├── style.css            Obsidian workstation styling & responsive layout
+│       ├── style.css            High-contrast obsidian/carbon palette & animations
 │       ├── components/
 │       │   ├── BatchRenderModal.jsx  Batch render queue & configuration modal
 │       │   ├── Candidates.jsx        Shortlist clips table with instant filtering
-│       │   ├── ClipEditor.jsx        Monitor, timeline scrubber, transport & controls
+│       │   ├── ClipEditor.jsx        Monitor, timeline scrubber, transport & Ready to Post Hub
 │       │   ├── Icons.jsx             Crisp SVG studio icons
+│       │   ├── NewProject.jsx        Auto-Pilot toggle, volume pills & subtitle presets
 │       │   └── Progress.jsx          Live pipeline execution and step progress
 │       └── lib/
-│           ├── api.js           REST API client, waveform, system dirs & folder reveal
+│           ├── api.js           REST API client, waveform, social posts & presets
 │           └── useWorkspace.js  React custom hook for project polling & mutation
 ├── tests/
 │   ├── test_analysis.py         Heuristics, ranking & keyword extraction tests
+│   ├── test_audience.py         Audience retention & demographic scoring tests
+│   ├── test_benchmarks.py       Performance & throughput benchmark tests
 │   ├── test_face_tracker.py     YuNet tracking, smoothing & filtergraph tests
 │   ├── test_refinements.py      API endpoint, batch render & bundle tests
-│   └── test_subtitles.py        ASS timing, resolution scaling & SRT generation tests
+│   ├── test_streamer.py         Streamer jargon & reaction keyword tests
+│   ├── test_subtitles.py        ASS timing, resolution scaling & SRT generation tests
+│   └── test_trends.py           Trend score & viral velocity tests
 ├── models/
 │   └── face_detection/          YuNet ONNX model cache
+├── mcp_config.json              MCP configuration for Claude Desktop and Antigravity
+├── pytest.ini                   Pytest configuration with local cache Isolation
 ├── requirements.txt             Python package requirements
 ├── .gitignore                   Git exclusions for temp, venv, and large files
 └── read me.txt                  Comprehensive documentation and release notes
@@ -171,34 +186,64 @@ ClippingSoftware/
 4. API SPECIFICATION
 --------------------------------------------------------------------------------
 
-GET    /api/health                       System health, ffmpeg, models, disk space
-GET    /api/projects                     List all projects
-POST   /api/projects                     Create new project from YouTube URL or upload
-GET    /api/projects/{pid}               Get project state, settings, candidates
-DELETE /api/projects/{pid}               Delete project and remove project folder
-POST   /api/projects/{pid}/rename        Rename project title
-POST   /api/projects/{pid}/retry         Retry a failed processing job
-POST   /api/projects/{pid}/analyze       Re-analyze with customized clip lengths
-GET    /api/projects/{pid}/source        Stream original source video
-POST   /api/projects/{pid}/clips         Add custom clip with manual In/Out timestamps
-DELETE /api/projects/{pid}/clips/{cid}   Delete candidate clip
-POST   /api/projects/{pid}/clips/{cid}   Edit clip title, In/Out, ratio, layout, crop
-POST   /api/projects/{pid}/render        Render single or batch clips with options
-GET    /api/projects/{pid}/clips/{cid}/srt  Download synchronized .srt subtitle file
-GET    /api/projects/{pid}/files/{name}  Stream or download exported MP4 file
-GET    /api/projects/{pid}/bundle        Download ZIP bundle of all rendered clips
-GET    /api/projects/{pid}/waveform      Get 0.5s RMS vocal energy series
-GET    /api/system-directories           Get user Home, Videos, Desktop, Downloads paths
-POST   /api/projects/{pid}/open-folder   Reveal exports folder in Windows File Explorer
+GET    /api/health                         System health, ffmpeg, models, disk space
+GET    /api/subtitle-presets               Available viral subtitle presets, fonts, colors
+GET    /api/projects                       List all projects
+POST   /api/projects                       Create new project (with Auto-Pilot option)
+GET    /api/projects/{pid}                 Get project state, settings, candidates
+DELETE /api/projects/{pid}                 Delete project and remove project folder
+POST   /api/projects/{pid}/rename          Rename project title
+POST   /api/projects/{pid}/retry           Retry a failed processing job
+POST   /api/projects/{pid}/analyze         Re-analyze with customized clip count (up to 50)
+GET    /api/projects/{pid}/source          Stream original source video
+POST   /api/projects/{pid}/clips           Add custom clip with manual In/Out timestamps
+DELETE /api/projects/{pid}/clips/{cid}     Delete candidate clip
+POST   /api/projects/{pid}/clips/{cid}     Edit clip title, In/Out, captions, ratio, layout
+GET    /api/projects/{pid}/clips/{cid}/social Get social post title, hook, desc, hashtags
+POST   /api/projects/{pid}/render          Render single or batch clips with options
+GET    /api/projects/{pid}/clips/{cid}/srt Download synchronized .srt subtitle file
+GET    /api/projects/{pid}/files/{name}    Stream or download exported MP4 file
+GET    /api/projects/{pid}/bundle          Download ZIP bundle of all rendered clips
+GET    /api/projects/{pid}/waveform        Get 0.5s RMS vocal energy series
+GET    /api/system-directories             Get user Home, Videos, Desktop, Downloads paths
+POST   /api/projects/{pid}/open-folder     Reveal exports folder in Windows File Explorer
 
 
 --------------------------------------------------------------------------------
-5. QUICK START & INSTALLATION
+5. CONNECTING CHATGPT & CLAUDE VIA MCP
+--------------------------------------------------------------------------------
+
+To connect ChatGPT or Claude Desktop directly to your local Clipping Studio:
+
+1. Claude Desktop:
+   Add the following snippet to your `claude_desktop_config.json`:
+   ```json
+   {
+     "mcpServers": {
+       "localcut": {
+         "command": "h:\\Clipping\\.venv\\Scripts\\python.exe",
+         "args": ["-m", "backend.mcp_server", "--transport", "stdio"],
+         "cwd": "h:\\Clipping"
+       }
+     }
+   }
+   ```
+
+2. ChatGPT (via SSE Bridge / Custom GPT Action):
+   Run the MCP server in SSE mode:
+   ```powershell
+   .\.venv\Scripts\python.exe -m backend.mcp_server --transport sse --port 8001
+   ```
+   Point ChatGPT Custom Actions / SSE connector to `http://127.0.0.1:8001/sse`.
+
+
+--------------------------------------------------------------------------------
+6. QUICK START & INSTALLATION
 --------------------------------------------------------------------------------
 
 PREREQUISITES:
 - Windows 10/11, macOS, or Linux
-- Python 3.10+
+- Python 3.10+ (Python 3.12 recommended)
 - Node.js 18+ and npm
 - FFmpeg and FFprobe installed and available on system PATH
 
@@ -211,7 +256,6 @@ SETUP INSTRUCTIONS:
 2. Setup Python Virtual Environment:
    python -m venv .venv
    .\.venv\Scripts\activate          # Windows PowerShell / CMD
-   # source .venv/bin/activate        # Linux / macOS
    pip install -r requirements.txt
 
 3. Build Frontend:
@@ -228,84 +272,12 @@ SETUP INSTRUCTIONS:
 
 
 --------------------------------------------------------------------------------
-6. RUNNING TESTS
+7. RUNNING TESTS
 --------------------------------------------------------------------------------
-To run the automated test suite verifying all 13 core subsystems:
-   .\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
+To run the automated test suite verifying all 40 tests:
+   .\.venv\Scripts\python.exe -m pytest --basetemp=h:\Clipping\.tmp_test
 
 
 ================================================================================
-Licensed under MIT. Crafted for high-velocity video creators and editors.
+Licensed under MIT. Built for creators who want premium clipping without fees.
 ================================================================================
-
---------------------------------------------------------------------------------
-7. CONTENT-AWARE REFINEMENT - 4 OCTOBER 2026
---------------------------------------------------------------------------------
-- Added Auto, Gaming & reactions, Education & how-to, Podcast & opinion,
-  and Stories & comedy profiles to new projects and transcript re-analysis.
-- Ranking checks immediate hooks, slow setup, context and payoff. Audio bonuses
-  are capped so volume alone does not dominate. Topic similarity reduces repeats.
-- New YouTube downloads preserve public replay heatmaps when yt-dlp provides them.
-  Above-baseline replay interest adds at most 8 points. Missing data falls back
-  gracefully to local analysis. No accounts, paid APIs, telemetry or cloud inference.
-- Clip cards show content fit, opening/payoff review hints, evidence source,
-  score breakdowns and cautions. These are editorial estimates, NOT predicted
-  views, live trends, a trained viral model, or access to private algorithms.
-- Improved readable card typography, focus outlines, reduced-motion behavior;
-  removed external Google font requests so the UI works fully offline.
-- Kept existing tracking, waveform, manual editing and multi-format exports.
-  Fixed keyboard shortcuts intercepting buttons and save/render sequencing.
-- Research: YouTube Search and discovery tips - Shorts:
-  https://support.google.com/youtube/answer/11914225
-  TikTok How TikTok recommends content:
-  https://support.tiktok.com/en/using-tiktok/exploring-videos/how-tiktok-recommends-content
-  These describe watch choice, watch time and completion signals; our scoring
-  weights are local design choices, not platform-provided weights.
-- Verified: 20 tests pass; production frontend builds; fresh public YouTube
-  download, CPU transcription and actual replay metadata retrieval; captioned
-  1080x1920 MP4 export, full decode, metadata, ZIP and retry recovery.
-
---------------------------------------------------------------------------------
-8. PUBLIC SHORTS REFERENCE DATABASE - 5 OCTOBER 2026
---------------------------------------------------------------------------------
-Added a sidebar library backed by data/public_shorts.sqlite3. Collect free public
-YouTube metadata by topic or video links, inspect best-performing collected examples,
-refresh counts, preserve daily snapshots and export JSON. No video downloads, API
-keys, paid services or new dependencies. Public views, likes and comments are not
-private retention analytics. Missing counts stay unavailable.
-
-Relevant fresh examples contribute at most +6 to a clip's editorial score, with
-source links and matching terms shown. Matching is local and can be disabled in
-project settings. Your transcript is never uploaded or searched online. Existing
-projects require user-requested re-analysis to apply the database.
-
-Verified real Shorts metadata, topic discovery, browser refresh and SQLite history;
-25 tests pass, 3 older video-fixture checks skip when their source file is absent.
-See README.md for scoring limits and TEST_RESULTS.md for verification details.
-
-
-## Monthly trends page — 5 October 2026
-
-Open **Monthly trends** in the sidebar (http://127.0.0.1:8000/#trends).
-Choose an upload month, topic and format, then select **Scan this month**.
-Top 5 & rankings is the default. Topic cards summarize the median performance,
-number of examples and independent channels; the leaderboard can sort by public
-views, likes or lifetime average views/day. Titles link to the original Shorts.
-
-Discovery uses the existing yt-dlp installation and stores public metadata in
-`data/public_shorts.sqlite3`. It checks at most six results per topic across seven
-topics, validates real upload dates and vertical/square dimensions, and shares the
-reference library used by clip scoring. No videos or private transcripts are uploaded.
-Internet access is required for discovery; saved results remain local.
-
-This is a collected sample, not a comprehensive global trend chart. Month refers
-to upload date, not views earned in that month. Counts are cumulative at collection.
-Topic/format labels come from titles. Topics without a 1,000-view example show
-“Low reach so far”; this threshold is only a screening aid. The initial October
-scan found seven matching records with low reach, so no strong trend is claimed.
-Earlier months may have no matching results. Add known examples through the public
-reference library to expand the sample. Scanning never re-renders existing projects.
-
-Implementation: backend/services/trends.py, backend/api/trends.py,
-frontend/src/components/TrendsPage.jsx, sidebar routing/style updates, and
-hidden-editor keyboard/playback handling. No new dependencies.

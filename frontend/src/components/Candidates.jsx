@@ -271,6 +271,14 @@ export default function Candidates({
                   <span>{isActive ? 'Editing' : 'Inspect & Trim'}</span>
                   <ChevronRightIcon size={12} />
                 </button>
+                <button
+                  type="button"
+                  className="btn-quick-post-pill"
+                  onClick={() => onChoose(clip.id, 'post')}
+                  title="Open Ready-to-Post Hub for titles, captions & hashtags"
+                >
+                  <span>🚀 Post Copy</span>
+                </button>
 
                 <div className="row-render-tag">
                   {isExportReady ? (
