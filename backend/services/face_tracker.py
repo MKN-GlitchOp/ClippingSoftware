@@ -164,7 +164,7 @@ def track_clip_faces(video_path: str, start: float, end: float, default_crop_x: 
 
 def build_face_tracking_filter(keyframes: list[tuple[float, float]], ratio: str = '9:16',
                                layout: str = 'crop', resolution: str = '1080p',
-                               default_crop_x: float = 50.0) -> str:
+                               default_crop_x: float = 50.0, input_label: str = '[0:v]') -> str:
     """
     Generates an FFmpeg video filter string using time-based nested piecewise interpolation
     for smooth camera panning following the speaker's face.
@@ -173,11 +173,11 @@ def build_face_tracking_filter(keyframes: list[tuple[float, float]], ratio: str 
 
     if layout == 'blur':
         # Blur layout shows the full frame, no horizontal crop tracking needed
-        return video_filter(ratio, 'blur', default_crop_x, resolution)
+        return video_filter(ratio, 'blur', default_crop_x, resolution, input_label=input_label)
 
     if not keyframes or len(keyframes) <= 1:
         x_val = (keyframes[0][1] * 100.0) if keyframes else default_crop_x
-        return video_filter(ratio, layout, x_val, resolution)
+        return video_filter(ratio, layout, x_val, resolution, input_label=input_label)
 
     # Build nested if expression: if(lt(t\,t1)\,lerp1\,if(lt(t\,t2)\,lerp2\,last))
     expr = str(keyframes[-1][1])
@@ -189,4 +189,4 @@ def build_face_tracking_filter(keyframes: list[tuple[float, float]], ratio: str 
         lerp = f'{p0:.3f}+({p1 - p0:.3f})*(t-{t0:.2f})/{dt:.2f}'
         expr = f'if(lt(t\\,{t1:.2f})\\,{lerp}\\,{expr})'
 
-    return f'[0:v]scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos+accurate_rnd,crop={width}:{height}:(iw-ow)*({expr}):(ih-oh)/2,cas=0.3,setsar=1'
+    return f'{input_label}scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos+accurate_rnd,crop={width}:{height}:(iw-ow)*({expr}):(ih-oh)/2,cas=0.3,setsar=1'

@@ -231,7 +231,17 @@ export default function Candidates({
                 </div>
 
                 <div className="clip-info-col">
-                  <h4 className="clip-title-line">{clip.title}</h4>
+                  <div className="clip-title-top-row">
+                    <h4 className="clip-title-line">{clip.title}</h4>
+                    {clip.teaser_enabled && (
+                      <span className="teaser-pill-badge" title="Has a viral Dropouts/20v1 cold-open hook prepended">
+                        ⚡ {clip.teaser_badge || 'TEASER HOOK'}
+                      </span>
+                    )}
+                  </div>
+                  {clip.teaser_enabled && clip.teaser_text && (
+                    <p className="teaser-hook-preview">Hook: "{clip.teaser_text}"</p>
+                  )}
                   {clip.hook && (
                     <p className="hook-quote">"{clip.hook}"</p>
                   )}

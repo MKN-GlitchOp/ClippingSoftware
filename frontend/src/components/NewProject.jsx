@@ -19,7 +19,8 @@ const defaults = {
   layout: 'crop',
   captions: true,
   model: 'base',
-  ollama_model: ''
+  ollama_model: '',
+  summarize_mode: true
 };
 
 const PRESETS = [
@@ -240,6 +241,29 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
               onClick={() => set('auto_pilot', !settings.auto_pilot)}
             >
               <span className="switch-status">{settings.auto_pilot ? 'AUTO-PILOT ON' : 'MANUAL REVIEW'}</span>
+              <span className="switch-knob" />
+            </button>
+          </div>
+        </section>
+
+        {/* Summarize / Cold-Open Teaser Hook Mode */}
+        <section className={`deck-card summarize-card ${settings.summarize_mode ? 'active' : ''}`}>
+          <div className="autopilot-toggle-row">
+            <div className="autopilot-info">
+              <div className="autopilot-title-row">
+                <span className="summarize-badge">🎬 SUMMARIZE & COLD-OPEN HOOK</span>
+                <span className="summarize-tag">DROPOUTS & 20v1 VIRAL FORMAT</span>
+              </div>
+              <p className="autopilot-sub">
+                Hooks viewers in the first 3 seconds with a teaser punchline reaction from the climax, displaying a "WAIT FOR IT..." badge, then seamlessly cuts back to the buildup without spoiling the full scene.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={`autopilot-switch-btn ${settings.summarize_mode ? 'on' : 'off'}`}
+              onClick={() => set('summarize_mode', !settings.summarize_mode)}
+            >
+              <span className="switch-status">{settings.summarize_mode ? 'TEASER HOOK ON' : 'STANDARD CUT'}</span>
               <span className="switch-knob" />
             </button>
           </div>
@@ -501,7 +525,7 @@ export default function NewProject({health, busy, uploadProgress, onCreate}) {
         <div className="execute-status">
           <span className="status-dot-neutral" />
           <span>
-            {settings.auto_pilot ? '⚡ Auto-Pilot Ready' : 'Manual Ready'} • Top {settings.num_clips} clips ({settings.min_length}s–{settings.max_length}s) • {settings.ratio}
+            {settings.auto_pilot ? '⚡ Auto-Pilot Ready' : 'Manual Ready'} • Top {settings.num_clips} clips ({settings.min_length}s–{settings.max_length}s) • {settings.ratio}{settings.summarize_mode ? ' • 🎬 Summarize Teasers' : ''}
           </span>
         </div>
         <button

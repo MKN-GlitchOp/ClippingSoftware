@@ -290,6 +290,97 @@ def score_passage(units, silence, previous_complete=True, audio_energy=None):
     return total_score, reason_str, breakdown, cautions
 
 
+def detect_teaser_hook(passage, audio_energy=None, total_duration=None):
+    """
+    Finds the peak reaction, punchline, or acoustic spike in the climax/second half
+    of a passage to use as a 2-3.5s cold-open teaser hook (summarize mode).
+    Ideal for dating shows, 20 vs 1, podcasts, and challenge videos.
+    """
+    if not passage:
+        return None
+
+    clip_start = passage[0]['start']
+    clip_end = passage[-1]['end']
+    clip_dur = max(0.1, clip_end - clip_start)
+
+    # Focus on the 25% to 92% region of the passage (build-up & climax)
+    window_start = clip_start + clip_dur * 0.25
+    window_end = clip_start + clip_dur * 0.95
+    candidates_in_window = [u for u in passage if u['start'] >= window_start and u['end'] <= window_end]
+    if not candidates_in_window:
+        candidates_in_window = passage[max(1, len(passage) // 2):] or passage
+
+    w_sec = audio_energy.get('window_sec', 0.5) if audio_energy else 0.5
+    energies = audio_energy.get('energies', []) if audio_energy else []
+
+    best_unit = None
+    best_score = -999.0
+
+    for u in candidates_in_window:
+        u_text = (u.get('text') or u.get('word') or '').strip()
+        if not u_text:
+            continue
+
+        score = 0.0
+        # Reaction hook cues (+15)
+        if HOOK_REACTION.search(u_text):
+            score += 15.0
+        # Humor or roasted cues (+10)
+        if BODY_HUMOR.search(u_text):
+            score += 10.0
+        # Tension / stakes (+8)
+        if BODY_STAKES.search(u_text):
+            score += 8.0
+        # Punchy exclamations or questions (+7)
+        if u_text.endswith(('?', '!')):
+            score += 7.0
+
+        # Audio energy spike
+        if energies:
+            s_idx = max(0, int(u['start'] / w_sec))
+            e_idx = min(len(energies), int(u['end'] / w_sec))
+            if e_idx > s_idx:
+                u_energy = max(energies[s_idx:e_idx])
+                score += u_energy * 12.0
+
+        # Ideal hook length (1.5s - 3.8s)
+        u_dur = u['end'] - u['start']
+        if 1.5 <= u_dur <= 3.8:
+            score += 5.0
+        elif u_dur < 1.0 or u_dur > 5.0:
+            score -= 4.0
+
+        if score > best_score:
+            best_score = score
+            best_unit = u
+
+    if not best_unit:
+        best_unit = candidates_in_window[-1] if candidates_in_window else passage[0]
+
+    t_start = max(clip_start, best_unit['start'] - 0.1)
+    t_end = min(clip_end, max(best_unit['end'] + 0.15, t_start + 2.4))
+    if t_end - t_start > 3.8:
+        t_end = t_start + 3.8
+
+    # Gather words within the teaser window to form a coherent punchy reaction phrase
+    teaser_words = [
+        (u.get('text') or u.get('word') or '').strip()
+        for u in passage
+        if u['end'] >= t_start and u['start'] <= t_end
+    ]
+    phrase = ' '.join(w for w in teaser_words if w)
+    chosen_text = phrase if phrase else (best_unit.get('text') or best_unit.get('word') or '').strip()
+
+    return {
+        'teaser_enabled': True,
+        'teaser_start': round(t_start, 2),
+        'teaser_end': round(t_end, 2),
+        'teaser_duration': round(t_end - t_start, 2),
+        'teaser_text': chosen_text,
+        'teaser_badge': '⚡ WAIT FOR IT...'
+    }
+
+
 def analyze(transcript, settings, signals, duration):
     units = speech_units(transcript)
     units = [u for u in units if u['text'].strip() and u['end'] > u['start']]
@@ -400,7 +491,13 @@ def analyze(transcript, settings, signals, duration):
     # Sort so the highest-scoring moments are listed first
     selected.sort(key=lambda c: (-c['score'], c['start']))
 
+    summarize_mode = bool(settings.get('summarize_mode', False))
     for idx, candidate in enumerate(selected):
+        c_passage = [u for u in units if u['start'] >= candidate['start'] and u['end'] <= candidate['end']]
+        hook_info = detect_teaser_hook(c_passage, audio_energy, duration)
+        t_start = hook_info['teaser_start'] if hook_info else round(candidate['start'], 2)
+        t_end = hook_info['teaser_end'] if hook_info else round(min(candidate['end'], candidate['start'] + 3.0), 2)
+        t_text = hook_info['teaser_text'] if hook_info else candidate['hook']
         candidate.update(
             id=str(idx + 1),
             selected=True,
@@ -414,7 +511,13 @@ def analyze(transcript, settings, signals, duration):
             face_tracking=settings.get('face_tracking', True),
             caption_position='lower',
             render_status='pending',
-            analysis_version=ANALYSIS_VERSION
+            analysis_version=ANALYSIS_VERSION,
+            teaser_enabled=summarize_mode,
+            teaser_start=t_start,
+            teaser_end=t_end,
+            teaser_text=t_text,
+            teaser_badge='WAIT FOR IT...',
+            cliffhanger_cut=False
         )
 
     return selected

@@ -30,31 +30,49 @@ def build_social_post(clip: dict, project_title: str = "") -> dict:
     tags = clip.get('tags', [])
     score = clip.get('score', 85)
 
+    teaser_enabled = clip.get('teaser_enabled', False)
+    teaser_text = clip.get('teaser_text', '')
+
     # Generate topic-specific hashtags from keywords
     topic_hashtags = [f"#{re.sub(r'[^a-zA-Z0-9]', '', tag)}" for tag in tags if len(tag) > 2][:5]
     all_hashtags = list(dict.fromkeys(topic_hashtags + GENERIC_HASHTAGS))
 
     # TikTok Copy: Short, curiosity-driven hook, question, hashtags
-    tiktok_title = f"{clip_title} 🤯" if score > 80 else clip_title
-    tiktok_caption = f"{hook}\n\nDid you expect this? Drop your thoughts below 👇\n\n" + " ".join(all_hashtags[:8] + PLATFORM_SPECIFIC_TAGS["tiktok"])
-
-    # YouTube Shorts Copy: High CTR title, short description
-    yt_title = f"{clip_title} #shorts"
-    yt_description = (
-        f"{clip_title}\n\n"
-        f"\"{hook}\"\n\n"
-        f"Clip from: {project_title or 'Stream/Podcast'}\n"
-        f"Subscribe for more daily highlights!\n\n"
-        + " ".join(all_hashtags[:6] + PLATFORM_SPECIFIC_TAGS["youtube"])
-    )
-
-    # Instagram Reels Copy: Aesthetic formatting, call to action
-    ig_caption = (
-        f"{clip_title} 🔥\n\n"
-        f"\"{hook}\"\n\n"
-        f"Save this for later 📌 and share with someone who needs to see this!\n\n"
-        + " ".join(all_hashtags[:10] + PLATFORM_SPECIFIC_TAGS["instagram"])
-    )
+    if teaser_enabled:
+        teaser_hook_display = f"\"{teaser_text}\"" if teaser_text else hook
+        tiktok_title = f"Wait for it... 💀 {clip_title}"
+        tiktok_caption = f"Wait till you see what happened... 💀\n\n{teaser_hook_display}\n\nDid you expect that? Drop your thoughts below 👇\n\n" + " ".join(all_hashtags[:8] + PLATFORM_SPECIFIC_TAGS["tiktok"])
+        yt_title = f"Wait for the end... 😭 {clip_title} #shorts"
+        yt_description = (
+            f"Wait till the end... 💀\n\n"
+            f"{teaser_hook_display}\n\n"
+            f"Clip from: {project_title or 'Stream/Podcast'}\n"
+            f"Subscribe for more daily highlights!\n\n"
+            + " ".join(all_hashtags[:6] + PLATFORM_SPECIFIC_TAGS["youtube"])
+        )
+        ig_caption = (
+            f"Watch until the end... 😱\n\n"
+            f"{teaser_hook_display}\n\n"
+            f"Save this for later 📌 and share with someone who needs to see this!\n\n"
+            + " ".join(all_hashtags[:10] + PLATFORM_SPECIFIC_TAGS["instagram"])
+        )
+    else:
+        tiktok_title = f"{clip_title} 🤯" if score > 80 else clip_title
+        tiktok_caption = f"{hook}\n\nDid you expect this? Drop your thoughts below 👇\n\n" + " ".join(all_hashtags[:8] + PLATFORM_SPECIFIC_TAGS["tiktok"])
+        yt_title = f"{clip_title} #shorts"
+        yt_description = (
+            f"{clip_title}\n\n"
+            f"\"{hook}\"\n\n"
+            f"Clip from: {project_title or 'Stream/Podcast'}\n"
+            f"Subscribe for more daily highlights!\n\n"
+            + " ".join(all_hashtags[:6] + PLATFORM_SPECIFIC_TAGS["youtube"])
+        )
+        ig_caption = (
+            f"{clip_title} 🔥\n\n"
+            f"\"{hook}\"\n\n"
+            f"Save this for later 📌 and share with someone who needs to see this!\n\n"
+            + " ".join(all_hashtags[:10] + PLATFORM_SPECIFIC_TAGS["instagram"])
+        )
 
     return {
         "clip_id": clip.get('id'),

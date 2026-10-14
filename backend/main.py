@@ -77,6 +77,7 @@ class Settings(BaseModel):
     captions: bool = True
     model: Literal['tiny','base','small'] = 'base'
     ollama_model: str = Field(default='', max_length=100)
+    summarize_mode: bool = False
 
     @model_validator(mode='after')
     def lengths(self):
@@ -250,6 +251,7 @@ class AnalysisOptions(BaseModel):
     num_clips: int = Field(default=10, ge=1, le=50)
     min_length: float = Field(default=20, ge=3, le=180)
     max_length: float = Field(default=60, ge=3, le=180)
+    summarize_mode: bool = False
 
 
 @app.post('/api/projects/{pid}/analyze')
@@ -301,6 +303,12 @@ class ClipEdit(BaseModel):
     export_srt: bool | None = None
     export_dir: str | None = None
     face_tracking: bool | None = None
+    teaser_enabled: bool | None = None
+    teaser_start: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    teaser_end: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    teaser_text: str | None = Field(default=None, max_length=500)
+    teaser_badge: str | None = Field(default=None, max_length=100)
+    cliffhanger_cut: bool | None = None
 
 
 class CreateClipInput(BaseModel):
@@ -391,8 +399,26 @@ def edit_clip(pid: str, cid: str, data: ClipEdit):
         start, end = changes.get('start',c['start']), changes.get('end',c['end'])
         if not 3 <= end-start <= 180 or end > p['media']['duration']:
             raise HTTPException(400, 'Choose a range within the video, between 3 and 180 seconds.')
-        defaults = dict(layout='crop',crop_x=50,caption_position='lower',caption_color='yellow',caption_uppercase=False,face_tracking=True,ratio='9:16',resolution='1080p',caption_style='hormozi',caption_bounce=True,caption_chunk_size='phrase')
-        changed = any(c.get(k,defaults.get(k)) != changes[k] for k in ('start','end','captions','layout','crop_x','caption_position','caption_color','caption_uppercase','face_tracking','ratio','resolution','caption_style','caption_bounce','caption_chunk_size','caption_font','caption_offset_y','caption_size') if k in changes)
+        if changes.get('teaser_enabled'):
+            t_s = changes.get('teaser_start', c.get('teaser_start', 0.0))
+            t_e = changes.get('teaser_end', c.get('teaser_end', 0.0))
+            if t_s is not None and t_e is not None and t_e > 0:
+                if t_s >= t_e or t_e > p['media']['duration']:
+                    raise HTTPException(400, 'Teaser hook range must be valid and within video duration.')
+        defaults = dict(
+            layout='crop', crop_x=50, caption_position='lower', caption_color='yellow',
+            caption_uppercase=False, face_tracking=True, ratio='9:16', resolution='1080p',
+            caption_style='hormozi', caption_bounce=True, caption_chunk_size='phrase',
+            teaser_enabled=False, teaser_start=0.0, teaser_end=0.0, teaser_text='',
+            teaser_badge='⚡ WAIT FOR IT...', cliffhanger_cut=False
+        )
+        changed = any(c.get(k, defaults.get(k)) != changes[k] for k in (
+            'start', 'end', 'captions', 'layout', 'crop_x', 'caption_position',
+            'caption_color', 'caption_uppercase', 'face_tracking', 'ratio', 'resolution',
+            'caption_style', 'caption_bounce', 'caption_chunk_size', 'caption_font',
+            'caption_offset_y', 'caption_size', 'teaser_enabled', 'teaser_start',
+            'teaser_end', 'teaser_text', 'teaser_badge', 'cliffhanger_cut'
+        ) if k in changes)
         c.update(changes,duration=round(end-start,3))
         if changed:
             from backend.services.clip_analysis import clip_text
@@ -407,6 +433,46 @@ def edit_clip(pid: str, cid: str, data: ClipEdit):
             write_metadata(p,c,storage.folder(pid)/'exports'/c['file'])
         storage.save(p)
         return p
+
+
+@app.post('/api/projects/{pid}/clips/{cid}/detect-teaser')
+def detect_clip_teaser(pid: str, cid: str):
+    with storage.LOCK:
+        p = get_project(pid)
+        c = next((c for c in p['candidates'] if c['id'] == cid), None)
+        if not c:
+            raise HTTPException(404, 'Clip not found.')
+        transcript_path = storage.folder(pid) / 'transcript' / 'transcript.json'
+        if not transcript_path.is_file():
+            raise HTTPException(400, 'Transcript not available.')
+        t_data = json.loads(transcript_path.read_text(encoding='utf-8'))
+        signals_file = storage.folder(pid) / 'analysis' / 'signals.json'
+        audio_energy = {}
+        if signals_file.is_file():
+            try:
+                sig = json.loads(signals_file.read_text(encoding='utf-8'))
+                audio_energy = sig.get('audio_energy', {})
+            except Exception:
+                pass
+        from backend.services.clip_analysis import detect_teaser_hook
+        passage = [
+            w for seg in t_data.get('segments', [])
+            for w in seg.get('words', [])
+            if c['start'] <= w.get('start', 0) <= c['end']
+        ]
+        total_dur = p.get('media', {}).get('duration', 0)
+        teaser_info = detect_teaser_hook(passage, audio_energy, total_dur)
+        if teaser_info:
+            c.update(teaser_info)
+            c['teaser_enabled'] = True
+            c['edited'] = True
+            c.pop('file', None)
+            c.pop('render_error', None)
+            c['render_status'] = 'pending'
+            storage.save(p)
+            return {'clip': c, 'teaser': teaser_info}
+        else:
+            return {'clip': c, 'teaser': None, 'message': 'No punchy reaction found in clip passage.'}
 
 
 class RenderInput(BaseModel):

@@ -57,3 +57,4 @@ export const fetchSystemDirs = () => api('/system-directories');
 export const fetchWaveform = pid => api(`/projects/${pid}/waveform`);
 export const fetchSocialPost = (pid, cid) => api(`/projects/${pid}/clips/${cid}/social`);
 export const fetchSubtitlePresets = () => api('/subtitle-presets');
+export const detectTeaserHook = (pid, cid) => post(`/projects/${pid}/clips/${cid}/detect-teaser`);

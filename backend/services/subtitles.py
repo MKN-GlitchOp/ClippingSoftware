@@ -104,23 +104,49 @@ def safe(text):
     return re.sub(r'[{}\\\r\n]', '', text).strip()
 
 
+def extract_clip_words(transcript, clip, is_uppercase=False):
+    """
+    Extracts words for a clip, supporting cold-open teaser hook (summarize mode).
+    If teaser_enabled is True and teaser_dur >= 0.5s:
+      - Teaser words are emitted first for 0.0 to teaser_dur
+      - Main clip words are emitted next, offset by +teaser_dur
+    Otherwise, standard words are emitted for 0.0 to clip_dur.
+    """
+    teaser_enabled = bool(clip.get('teaser_enabled'))
+    teaser_start = float(clip.get('teaser_start', clip['start']))
+    teaser_end = float(clip.get('teaser_end', clip['start']))
+    teaser_dur = max(0.0, teaser_end - teaser_start) if teaser_enabled else 0.0
+
+    def collect_range(start_bound, end_bound, time_offset):
+        collected = []
+        for segment in transcript.get('segments', []):
+            source_words = segment.get('words')
+            if not source_words:
+                tokens = segment['text'].split()
+                length = (segment['end'] - segment['start']) / max(1, len(tokens))
+                source_words = [dict(word=w, start=segment['start'] + i * length, end=segment['start'] + (i + 1) * length) for i, w in enumerate(tokens)]
+            for word in source_words:
+                clean_word = safe(word['word'])
+                if word['end'] > start_bound and word['start'] < end_bound and clean_word:
+                    if is_uppercase:
+                        clean_word = clean_word.upper()
+                    w_start = time_offset + max(0.0, word['start'] - start_bound)
+                    w_end = time_offset + min(end_bound - start_bound, word['end'] - start_bound)
+                    if w_end > w_start:
+                        collected.append(dict(word=clean_word, start=round(w_start, 3), end=round(w_end, 3)))
+        return collected
+
+    if teaser_enabled and teaser_dur >= 0.5:
+        teaser_words = collect_range(teaser_start, teaser_end, 0.0)
+        main_words = collect_range(clip['start'], clip['end'], teaser_dur)
+        return teaser_words + main_words, teaser_dur
+    else:
+        return collect_range(clip['start'], clip['end'], 0.0), 0.0
+
+
 def make_clip_srt(transcript, clip, path):
     """Generate an SRT subtitle file aligned to the clip's local timeline (starting at 00:00:00)."""
-    words = []
-    for segment in transcript.get('segments', []):
-        source_words = segment.get('words')
-        if not source_words:
-            tokens = segment['text'].split()
-            length = (segment['end'] - segment['start']) / max(1, len(tokens))
-            source_words = [dict(word=w, start=segment['start'] + i * length, end=segment['start'] + (i + 1) * length) for i, w in enumerate(tokens)]
-        for word in source_words:
-            clean_word = safe(word['word'])
-            if word['end'] > clip['start'] and word['start'] < clip['end'] and clean_word:
-                words.append(dict(
-                    word=clean_word,
-                    start=max(0.0, word['start'] - clip['start']),
-                    end=min(clip['end'] - clip['start'], word['end'] - clip['start'])
-                ))
+    words, _ = extract_clip_words(transcript, clip, is_uppercase=False)
     if not words:
         path.write_text('', encoding='utf-8')
         return
@@ -218,28 +244,13 @@ WrapStyle: 0
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,{font_name},{font_size},&H00FFFFFF,&H0000FFFF,&H00101010,{back_colour},-1,0,0,0,100,100,0,0,{border_style},{outline},{shadow},{alignment},{margin_lr},{margin_lr},{bottom},1
+Style: TopBadge,{font_name},{round(font_size * 0.65)},&H0000FFFF,&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,8,30,30,{round(height * 0.08)},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 '''
 
-    words = []
-    for segment in transcript.get('segments', []):
-        source_words = segment.get('words')
-        if not source_words:
-            tokens = segment['text'].split()
-            length = (segment['end'] - segment['start']) / max(1, len(tokens))
-            source_words = [dict(word=w, start=segment['start'] + i * length, end=segment['start'] + (i + 1) * length) for i, w in enumerate(tokens)]
-        for word in source_words:
-            clean_word = safe(word['word'])
-            if word['end'] > clip['start'] and word['start'] < clip['end'] and clean_word:
-                if is_uppercase:
-                    clean_word = clean_word.upper()
-                words.append(dict(
-                    word=clean_word,
-                    start=max(0.0, word['start'] - clip['start']),
-                    end=min(clip['end'] - clip['start'], word['end'] - clip['start'])
-                ))
+    words, teaser_dur = extract_clip_words(transcript, clip, is_uppercase=is_uppercase)
 
     chunks, chunk = [], []
     for word in words:
@@ -254,6 +265,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         chunks.append(chunk)
 
     events = []
+    if teaser_dur >= 0.5:
+        badge_text = str(clip.get('teaser_badge', 'WAIT FOR IT...')).strip()
+        if badge_text and badge_text.lower() != 'clean':
+            events.append(f'Dialogue: 1,{ass_time(0.0)},{ass_time(teaser_dur)},TopBadge,,0,0,0,,⚡ {badge_text}')
     for chunk in chunks:
         for i, word in enumerate(chunk):
             end = chunk[i + 1]['start'] if i + 1 < len(chunk) else word['end']

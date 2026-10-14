@@ -26,7 +26,13 @@ def write_metadata(project, clip, target):
         caption_uppercase=clip.get('caption_uppercase', False),
         resolution=clip.get('resolution') or project['settings'].get('resolution', '1080p'),
         export_srt=clip.get('export_srt', True),
-        face_tracking=clip.get('face_tracking', False)
+        face_tracking=clip.get('face_tracking', False),
+        teaser_enabled=clip.get('teaser_enabled', False),
+        teaser_start=clip.get('teaser_start'),
+        teaser_end=clip.get('teaser_end'),
+        teaser_text=clip.get('teaser_text'),
+        teaser_badge=clip.get('teaser_badge'),
+        cliffhanger_cut=clip.get('cliffhanger_cut', False)
     )
     target.with_suffix('.json').write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding='utf-8')
 
@@ -49,19 +55,13 @@ def render_clip(project, clip, progress=None, export_dir=None, face_tracking=Non
         version += 1
     temporary = target.with_name(target.stem + '.rendering.mp4')
 
-    if use_face_tracking and layout != 'blur':
-        try:
-            from .face_tracker import track_clip_faces, build_face_tracking_filter
-            keyframes = track_clip_faces(project['source_path'], clip['start'], clip['end'], default_crop_x=crop_x)
-            filters = build_face_tracking_filter(keyframes, ratio=ratio, layout=layout, resolution=resolution, default_crop_x=crop_x)
-            clip['face_tracking'] = True
-        except Exception as e:
-            logging.warning("Face tracking failed, falling back to static framing: %s", e)
-            filters = video_filter(ratio, layout, crop_x, resolution=resolution)
-            clip['face_tracking'] = False
-    else:
-        filters = video_filter(ratio, layout, crop_x, resolution=resolution)
-        clip['face_tracking'] = False
+    teaser_enabled = bool(clip.get('teaser_enabled'))
+    teaser_start = float(clip.get('teaser_start', clip['start']))
+    teaser_end = float(clip.get('teaser_end', clip['start']))
+    teaser_dur = max(0.0, teaser_end - teaser_start) if teaser_enabled else 0.0
+    main_dur = max(0.1, clip['end'] - clip['start'])
+    has_teaser = teaser_enabled and teaser_dur >= 0.5
+    total_dur = (teaser_dur + main_dur) if has_teaser else main_dur
 
     transcript_path = base / 'transcript' / 'transcript.json'
     t_data = None
@@ -73,12 +73,77 @@ def render_clip(project, clip, progress=None, export_dir=None, face_tracking=Non
 
     width, height = get_dimensions(ratio, resolution)
 
-    # Burn-in subtitles if captions is True
-    if clip.get('captions') and t_data:
-        subtitle_path = base / 'clips' / f'{clip["id"]}.ass'
-        make_ass(t_data, clip, subtitle_path, width, height)
-        # Relative filename avoids Windows drive-colon escaping inside filters.
-        filters += f",ass=../clips/{clip['id']}.ass"
+    if has_teaser:
+        if use_face_tracking and layout != 'blur':
+            try:
+                from .face_tracker import track_clip_faces, build_face_tracking_filter
+                kf_teaser = track_clip_faces(project['source_path'], teaser_start, teaser_end, default_crop_x=crop_x)
+                kf_main = track_clip_faces(project['source_path'], clip['start'], clip['end'], default_crop_x=crop_x)
+                shifted_main = [(round(t + teaser_dur, 2), pos) for t, pos in kf_main]
+                keyframes = kf_teaser + shifted_main
+                core_filters = build_face_tracking_filter(keyframes, ratio=ratio, layout=layout, resolution=resolution, default_crop_x=crop_x, input_label='[vcat]')
+                clip['face_tracking'] = True
+            except Exception as e:
+                logging.warning("Face tracking failed with teaser, falling back: %s", e)
+                core_filters = video_filter(ratio, layout, crop_x, resolution=resolution, input_label='[vcat]')
+                clip['face_tracking'] = False
+        else:
+            core_filters = video_filter(ratio, layout, crop_x, resolution=resolution, input_label='[vcat]')
+            clip['face_tracking'] = False
+
+        if clip.get('captions') and t_data:
+            subtitle_path = base / 'clips' / f'{clip["id"]}.ass'
+            make_ass(t_data, clip, subtitle_path, width, height)
+            core_filters += f",ass=../clips/{clip['id']}.ass"
+
+        filter_complex_str = f"[0:v][1:v]concat=n=2:v=1:a=0[vcat];[0:a][1:a]concat=n=2:v=0:a=1,loudnorm=I=-14:TP=-1.5:LRA=11[aout];{core_filters}[out]"
+
+        ffmpeg_cmd = [
+            'ffmpeg', '-y',
+            '-ss', str(teaser_start), '-t', str(teaser_dur), '-i', project['source_path'],
+            '-ss', str(clip['start']), '-t', str(main_dur), '-i', project['source_path'],
+            '-filter_complex_threads', '2',
+            '-filter_complex', filter_complex_str,
+            '-map', '[out]', '-map', '[aout]',
+            '-c:v', 'libx264', '-threads', '4', '-preset', 'fast', '-crf', '18',
+            '-tune', 'film', '-maxrate', '14M', '-bufsize', '28M',
+            '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart',
+            str(temporary)
+        ]
+    else:
+        if use_face_tracking and layout != 'blur':
+            try:
+                from .face_tracker import track_clip_faces, build_face_tracking_filter
+                keyframes = track_clip_faces(project['source_path'], clip['start'], clip['end'], default_crop_x=crop_x)
+                filters = build_face_tracking_filter(keyframes, ratio=ratio, layout=layout, resolution=resolution, default_crop_x=crop_x)
+                clip['face_tracking'] = True
+            except Exception as e:
+                logging.warning("Face tracking failed, falling back to static framing: %s", e)
+                filters = video_filter(ratio, layout, crop_x, resolution=resolution)
+                clip['face_tracking'] = False
+        else:
+            filters = video_filter(ratio, layout, crop_x, resolution=resolution)
+            clip['face_tracking'] = False
+
+        if clip.get('captions') and t_data:
+            subtitle_path = base / 'clips' / f'{clip["id"]}.ass'
+            make_ass(t_data, clip, subtitle_path, width, height)
+            filters += f",ass=../clips/{clip['id']}.ass"
+
+        filter_complex_str = f"{filters}[out];[0:a:0]loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
+
+        ffmpeg_cmd = [
+            'ffmpeg', '-y',
+            '-ss', str(clip['start']), '-i', project['source_path'],
+            '-t', str(main_dur),
+            '-filter_complex_threads', '2',
+            '-filter_complex', filter_complex_str,
+            '-map', '[out]', '-map', '[aout]',
+            '-c:v', 'libx264', '-threads', '4', '-preset', 'fast', '-crf', '18',
+            '-tune', 'film', '-maxrate', '14M', '-bufsize', '28M',
+            '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart',
+            str(temporary)
+        ]
 
     # Standalone SRT file whenever requested or when rendering without burned-in captions
     srt_file_name = target.with_suffix('.srt').name
@@ -88,16 +153,9 @@ def render_clip(project, clip, progress=None, export_dir=None, face_tracking=Non
         clip['srt_file'] = srt_file_name
 
     try:
-        render_with_progress(['ffmpeg', '-y', '-ss', str(clip['start']), '-i', project['source_path'],
-                              '-t', str(clip['end'] - clip['start']), '-filter_complex_threads', '2',
-                              '-filter_complex', filters + '[out]', '-map', '[out]', '-map', '0:a:0',
-                              '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11',
-                              '-c:v', 'libx264', '-threads', '4', '-preset', 'fast', '-crf', '18',
-                              '-tune', 'film', '-maxrate', '14M', '-bufsize', '28M',
-                              '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', str(temporary)],
-                             clip['end'] - clip['start'], progress, cwd=base / 'exports')
+        render_with_progress(ffmpeg_cmd, total_dur, progress, cwd=base / 'exports')
         media = probe(temporary)
-        if abs(media['duration'] - (clip['end'] - clip['start'])) > 0.3:
+        if abs(media['duration'] - total_dur) > 0.5:
             raise RuntimeError('The rendered duration did not match the chosen timestamps.')
         temporary.replace(target)
         write_metadata(project, clip, target)

@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState, useCallback} from 'react';
-import {clipUrl, clipSrtUrl, time, openFolder, fetchSystemDirs, fetchWaveform, fetchSocialPost} from '../lib/api';
+import {clipUrl, clipSrtUrl, time, openFolder, fetchSystemDirs, fetchWaveform, fetchSocialPost, detectTeaserHook} from '../lib/api';
 import {
   PlayIcon, DownloadIcon, SlidersIcon,
   SubtitlesIcon, ClockIcon, CopyIcon, TrashIcon, FolderIcon
@@ -13,9 +13,20 @@ export function editorKey(clip) {
     clip.caption_style || 'hormozi', clip.caption_bounce ?? true, clip.caption_chunk_size || 'phrase',
     clip.caption_font || 'Impact', clip.caption_offset_y ?? '',
     clip.resolution || '1080p', clip.export_srt ?? true, clip.export_dir || '',
-    clip.face_tracking ?? true
+    clip.face_tracking ?? true,
+    clip.teaser_enabled ?? false, clip.teaser_start ?? 0, clip.teaser_end ?? 0,
+    clip.teaser_text || '', clip.teaser_badge || '', clip.cliffhanger_cut ?? false
   ].join('|');
 }
+
+const TEASER_BADGE_PRESETS = [
+  '⚡ WAIT FOR IT...',
+  '💀 SHE REALLY SAID THIS...',
+  '😭 WHO IS IN THE WRONG?',
+  '👀 WATCH TILL THE END...',
+  '🚨 BRO WENT TOO FAR...',
+  '😳 NO WAY THIS HAPPENED...'
+];
 
 const SPEED_OPTIONS = [1, 1.25, 1.5, 2];
 const DIMENSION_OPTIONS = [
@@ -75,7 +86,13 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
     caption_chunk_size: clip.caption_chunk_size || 'phrase',
     caption_font: clip.caption_font || 'Impact',
     caption_offset_y: clip.caption_offset_y ?? (clip.caption_position === 'upper' ? 10 : 22),
-    caption_size: clip.caption_size || ''
+    caption_size: clip.caption_size || '',
+    teaser_enabled: Boolean(clip.teaser_enabled),
+    teaser_start: clip.teaser_start ?? 0,
+    teaser_end: clip.teaser_end ?? 0,
+    teaser_text: clip.teaser_text || '',
+    teaser_badge: clip.teaser_badge || '⚡ WAIT FOR IT...',
+    cliffhanger_cut: Boolean(clip.cliffhanger_cut)
   };
 
   const [draft, setDraft] = useState(original);
@@ -98,6 +115,8 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
   const [systemDirs, setSystemDirs] = useState(null);
   const [folderNotice, setFolderNotice] = useState('');
   const [waveform, setWaveform] = useState([]);
+  const [playingTeaser, setPlayingTeaser] = useState(false);
+  const [autoDetectingTeaser, setAutoDetectingTeaser] = useState(false);
 
   const video = useRef(null);
   const timelineRef = useRef(null);
@@ -106,14 +125,21 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
   const length = Number(draft.end) - Number(draft.start);
   const totalDuration = project.media?.duration || 100;
 
+  const teaserValid = !draft.teaser_enabled || (
+    Number(draft.teaser_start) >= 0 &&
+    Number(draft.teaser_end) <= totalDuration &&
+    Number(draft.teaser_end) > Number(draft.teaser_start)
+  );
+
   const valid = draft.start !== '' && draft.end !== '' &&
     Number(draft.start) >= 0 &&
     Number(draft.end) <= totalDuration &&
     length >= 3 && length <= 180 &&
-    draft.title.trim().length > 0;
+    draft.title.trim().length > 0 &&
+    teaserValid;
 
   const dirty = Object.keys(original).some(key =>
-    ['start', 'end', 'crop_x'].includes(key)
+    ['start', 'end', 'crop_x', 'teaser_start', 'teaser_end'].includes(key)
       ? Number(draft[key]) !== Number(original[key])
       : draft[key] !== original[key]
   );
@@ -289,12 +315,55 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
     }
   };
 
+  const playTeaserOnly = () => {
+    if (!video.current || !ready) return;
+    const tStart = Number(draft.teaser_start) || 0;
+    const tEnd = Number(draft.teaser_end) || 0;
+    if (tEnd <= tStart) return;
+    setPlayingTeaser('only');
+    video.current.currentTime = tStart;
+    video.current.play().catch(() => {});
+  };
+
+  const playTeaserSequence = () => {
+    if (!video.current || !ready) return;
+    const tStart = Number(draft.teaser_start) || 0;
+    setPlayingTeaser('sequence');
+    video.current.currentTime = tStart;
+    video.current.play().catch(() => {});
+  };
+
+  const handleAutoDetectTeaser = async () => {
+    setAutoDetectingTeaser(true);
+    try {
+      const res = await detectTeaserHook(project.id, clip.id);
+      if (res && res.teaser) {
+        setDraft(prev => ({
+          ...prev,
+          teaser_enabled: true,
+          teaser_start: res.teaser.teaser_start,
+          teaser_end: res.teaser.teaser_end,
+          teaser_text: res.teaser.teaser_text || '',
+          teaser_badge: res.teaser.teaser_badge || '⚡ WAIT FOR IT...'
+        }));
+      } else {
+        alert(res?.message || 'No strong reaction hook found in this passage. You can set the In/Out manually!');
+      }
+    } catch (err) {
+      alert('Could not auto-detect teaser: ' + err.message);
+    } finally {
+      setAutoDetectingTeaser(false);
+    }
+  };
+
   const save = () => {
     return onSave({
       ...draft,
       start: Number(draft.start),
       end: Number(draft.end),
-      crop_x: Number(draft.crop_x)
+      crop_x: Number(draft.crop_x),
+      teaser_start: Number(draft.teaser_start || 0),
+      teaser_end: Number(draft.teaser_end || 0)
     });
   };
 
@@ -435,8 +504,16 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
               if (!player) return;
               const current = sourceMode ? player.currentTime : clip.start + player.currentTime;
               setPlayhead(current);
-              if (sourceMode && !player.paused && player.currentTime >= Number(draft.end)) {
-                player.pause();
+              if (sourceMode && !player.paused) {
+                if (playingTeaser === 'only' && player.currentTime >= Number(draft.teaser_end)) {
+                  player.pause();
+                  setPlayingTeaser(false);
+                } else if (playingTeaser === 'sequence' && player.currentTime >= Number(draft.teaser_end)) {
+                  setPlayingTeaser(false);
+                  player.currentTime = Number(draft.start);
+                } else if (!playingTeaser && player.currentTime >= Number(draft.end)) {
+                  player.pause();
+                }
               }
             }}
           />
@@ -585,6 +662,20 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
             }}
           />
 
+          {/* Cold-open teaser hook block if enabled */}
+          {draft.teaser_enabled && Number(draft.teaser_end) > Number(draft.teaser_start) && (
+            <div
+              className="timeline-teaser-block"
+              style={{
+                left: `${Math.max(0, Math.min(100, (Number(draft.teaser_start) / totalDuration) * 100))}%`,
+                width: `${Math.max(1, Math.min(100, ((Number(draft.teaser_end) - Number(draft.teaser_start)) / totalDuration) * 100))}%`
+              }}
+              title={`Cold-Open Hook: ${draft.teaser_text || draft.teaser_badge}`}
+            >
+              <span className="teaser-block-label">⚡ HOOK</span>
+            </div>
+          )}
+
           {/* Draggable IN Handle */}
           <div
             className={`timeline-handle in ${draggingHandle === 'in' ? 'active' : ''}`}
@@ -630,6 +721,15 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
         >
           <ClockIcon size={13} />
           <span>IN/OUT TIMING</span>
+        </button>
+        <button
+          type="button"
+          className={`sub-tab teaser-tab ${tab === 'teaser' ? 'active' : ''}`}
+          onClick={() => setTab('teaser')}
+        >
+          <span className="teaser-tab-icon">⚡</span>
+          <span>COLD-OPEN HOOK</span>
+          {draft.teaser_enabled && <span className="teaser-active-dot" />}
         </button>
         <button
           type="button"
@@ -745,7 +845,189 @@ export default function ClipEditor({project, clip, busy, onSave, onRender, onDel
           </div>
         )}
 
-        {/* 2. STYLE & FRAMING */}
+        {/* 2. SUMMARIZE / COLD-OPEN TEASER HOOK */}
+        {tab === 'teaser' && (
+          <div className="panel-teaser">
+            {/* Header toggle banner */}
+            <div className={`teaser-toggle-banner ${draft.teaser_enabled ? 'enabled' : ''}`}>
+              <div className="teaser-toggle-info">
+                <div className="teaser-title-row">
+                  <span className="teaser-mode-icon">⚡</span>
+                  <h4>Cold-Open Story Teaser Hook</h4>
+                  <span className="format-tag">Dropouts / 20v1 Format</span>
+                </div>
+                <p className="teaser-mode-desc">
+                  Starts the Short with an explosive 2–3.5s punchline reaction from the climax, shows a top curiosity badge, then cuts back to the buildup without spoiling the full scene.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={`autopilot-switch-btn ${draft.teaser_enabled ? 'on' : 'off'}`}
+                onClick={() => set('teaser_enabled', !draft.teaser_enabled)}
+              >
+                <span className="switch-status">{draft.teaser_enabled ? 'TEASER ON' : 'DISABLED'}</span>
+                <span className="switch-knob" />
+              </button>
+            </div>
+
+            {draft.teaser_enabled && (
+              <div className="teaser-config-body">
+                {/* Actions row: Auto-Detect & Preview */}
+                <div className="teaser-actions-row">
+                  <button
+                    type="button"
+                    className="btn-auto-detect-teaser"
+                    onClick={handleAutoDetectTeaser}
+                    disabled={autoDetectingTeaser || busy}
+                  >
+                    <span>{autoDetectingTeaser ? 'Detecting Best Reaction...' : '⚡ Auto-Detect Climax Hook'}</span>
+                  </button>
+
+                  <div className="teaser-preview-buttons">
+                    <button
+                      type="button"
+                      className="btn-preview-hook"
+                      onClick={playTeaserOnly}
+                      disabled={!ready || Number(draft.teaser_end) <= Number(draft.teaser_start)}
+                      title="Play only the cold-open hook"
+                    >
+                      <span>▶ Play Hook ({((Number(draft.teaser_end) || 0) - (Number(draft.teaser_start) || 0)).toFixed(1)}s)</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-preview-seq"
+                      onClick={playTeaserSequence}
+                      disabled={!ready || Number(draft.teaser_end) <= Number(draft.teaser_start)}
+                      title="Preview how the hook jumps into the main story"
+                    >
+                      <span>🎬 Play Full Sequence (Hook → Story)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Timing controls */}
+                <div className="in-out-grid">
+                  <div className="time-block">
+                    <div className="block-label-row">
+                      <span className="time-block-tag hook-in">● HOOK IN POINT</span>
+                      <button
+                        type="button"
+                        className="link-cue"
+                        disabled={!ready || busy}
+                        onClick={() => set('teaser_start', +playhead.toFixed(2))}
+                      >
+                        Set @ Playhead
+                      </button>
+                    </div>
+                    <div className="stepper-row">
+                      <button type="button" onClick={() => nudge('teaser_start', -1)}>-1s</button>
+                      <button type="button" onClick={() => nudge('teaser_start', -0.1)}>-0.1s</button>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={totalDuration}
+                        disabled={busy}
+                        className="mono-input centered"
+                        value={draft.teaser_start}
+                        onChange={e => set('teaser_start', e.target.value)}
+                      />
+                      <button type="button" onClick={() => nudge('teaser_start', 0.1)}>+0.1s</button>
+                      <button type="button" onClick={() => nudge('teaser_start', 1)}>+1s</button>
+                    </div>
+                    <span className="mono-time-sub">{time(draft.teaser_start, true)}</span>
+                  </div>
+
+                  <div className="time-block">
+                    <div className="block-label-row">
+                      <span className="time-block-tag hook-out">● HOOK OUT POINT</span>
+                      <button
+                        type="button"
+                        className="link-cue"
+                        disabled={!ready || busy}
+                        onClick={() => set('teaser_end', +playhead.toFixed(2))}
+                      >
+                        Set @ Playhead
+                      </button>
+                    </div>
+                    <div className="stepper-row">
+                      <button type="button" onClick={() => nudge('teaser_end', -1)}>-1s</button>
+                      <button type="button" onClick={() => nudge('teaser_end', -0.1)}>-0.1s</button>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max={totalDuration}
+                        disabled={busy}
+                        className="mono-input centered"
+                        value={draft.teaser_end}
+                        onChange={e => set('teaser_end', e.target.value)}
+                      />
+                      <button type="button" onClick={() => nudge('teaser_end', 0.1)}>+0.1s</button>
+                      <button type="button" onClick={() => nudge('teaser_end', 1)}>+1s</button>
+                    </div>
+                    <span className="mono-time-sub">
+                      {time(draft.teaser_end, true)} (Duration: {((Number(draft.teaser_end) || 0) - (Number(draft.teaser_start) || 0)).toFixed(2)}s)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Badge selector & text */}
+                <div className="control-group">
+                  <span className="control-label">VIRAL TOP BADGE (DISPLAYS DURING TEASER)</span>
+                  <div className="badge-preset-pills">
+                    {TEASER_BADGE_PRESETS.map(badge => (
+                      <button
+                        key={badge}
+                        type="button"
+                        className={`badge-pill ${draft.teaser_badge === badge ? 'active' : ''}`}
+                        onClick={() => set('teaser_badge', badge)}
+                      >
+                        {badge}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    className="mono-input custom-badge-input"
+                    placeholder="Custom badge text (e.g. ⚡ WAIT FOR IT...)"
+                    value={draft.teaser_badge}
+                    onChange={e => set('teaser_badge', e.target.value)}
+                  />
+                </div>
+
+                {/* Teaser spoken speech quote */}
+                <div className="control-group">
+                  <span className="control-label">TEASER SPOKEN REACTION / QUOTE</span>
+                  <input
+                    type="text"
+                    className="mono-input"
+                    placeholder="Quote or spoken words in the hook..."
+                    value={draft.teaser_text}
+                    onChange={e => set('teaser_text', e.target.value)}
+                  />
+                  <small className="control-hint">Burned into captions during the cold-open before the main clip begins.</small>
+                </div>
+
+                {/* Cliffhanger Cut Option */}
+                <label className="checkbox-toggle-row teaser-cliffhanger-toggle">
+                  <input
+                    type="checkbox"
+                    className="deck-checkbox"
+                    checked={draft.cliffhanger_cut}
+                    onChange={e => set('cliffhanger_cut', e.target.checked)}
+                  />
+                  <span className="checkbox-text">
+                    <strong>✂️ Sidemen / Dropouts Cliffhanger Cut</strong>
+                    <small>Cuts off the final seconds right before full resolution to maximize comment section debates & full-video clickthroughs.</small>
+                  </span>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3. STYLE & FRAMING */}
         {tab === 'style' && (
           <div className="panel-style">
             {/* Export Dimensions / Orientation */}
